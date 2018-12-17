@@ -1,5 +1,5 @@
 library(tensorA)
-
+# Generate a discrete MDP trajectory
 generate_discrete_MDP_trajectory <- function(s0, state_transition_matrix,
                                              behavior_action_matrix,
                                              transition_based_rewards,
@@ -18,9 +18,36 @@ generate_discrete_MDP_trajectory <- function(s0, state_transition_matrix,
   cbind(s=states_trajectory, a=actions_trajectory, r=rewards_trajectory)
 }
 
+# Generate discrete trajectory with probabilities of transitions under both
+# the behavior and the exploration policy
+generate_discrete_MDP_trajectory_with_pi_a_pi_b <- function(s0, state_transition_matrix,
+                                                            behavior_action_matrix,
+                                                            transition_based_rewards,
+                                                            horizon){
+  H <- generate_discrete_MDP_trajectory(s0, state_transition_matrix,
+                                        behavior_action_matrix,
+                                        transition_based_rewards,
+                                        horizon)
+  pi_b <- apply(H, 1, function(x) behavior_action_matrix[x[1], x[2]]) # propensity score 
+  pi_a <- apply(H, 1, function(x) evaluation_action_matrix[x[1], x[2]]) # probabilities of actions taken in H under the evaluation policy
+  rho_t <- cumprod(pi_a/pi_b)
+  cbind(H, pi_a=pi_a, pi_b=pi_b, rho_t=rho_t)
+}
+
+# Generate dataset, that is a bundle of trajectories
+generate_discrete_MDP_dataset <- function(n, s0, state_transition_matrix,
+                                          behavior_action_matrix,
+                                          transition_based_rewards,
+                                          horizon){
+  aperm(replicate(n, generate_discrete_MDP_trajectory_with_pi_a_pi_b(s0, state_transition_matrix,
+                                                                        behavior_action_matrix,
+                                                                        transition_based_rewards,
+                                                                        horizon)), c(3,1,2))
+}
+
 # Dynamic programming based computation of the value function
-compute_true_V_and_Q <- function(state_transition_matrix, 
-                                 transition_based_rewards, 
+compute_true_V_and_Q <- function(state_transition_matrix,
+                                 transition_based_rewards,
                                  evaluation_action_matrix, horizon){
   # True value-to-go under policy pi
   # Compute the true value-to-go under pi with dynamic programming

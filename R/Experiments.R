@@ -1,8 +1,10 @@
 library(tensorA)
-library(here)
-# source(here("R/MDP_modelWin.R"))
-setwd("~/aurelien.bibaut@gmail.com/Data_PC/PhD_Berkeley/LTMLE_OPE/R")
+# library(here)
+# source(here("MDP_modelWin.R"))
+# setwd("~/aurelien.bibaut@gmail.com/Data_PC/PhD_Berkeley/LTMLE_OPE/R")
 source('MDP_modelWin.R')
+
+
 
 # Experiments -------------------------------------------------------------
 horizon <- 20; M <- 1e4
@@ -11,25 +13,7 @@ V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
                                   evaluation_action_matrix, horizon)
 V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
 
-## Step-wise Importance Sampling. Following paper 2015 by Nan Jiang and Nihong Li
-V_IS_summands <- c()
-for(m in 1:M){
-  H <- generate_discrete_MDP_trajectory(1, state_transition_matrix,
-                                        behavior_action_matrix,
-                                        transition_based_rewards,
-                                        horizon)
-  pi_b <- apply(H, 1, function(x) behavior_action_matrix[x[1], x[2]]) # propensity score 
-  pi_a <- apply(H, 1, function(x) evaluation_action_matrix[x[1], x[2]]) # probabilities of actions taken in H under the evaluation policy
-  
-  V_IS <- rep(NA, horizon)
-  t <- horizon
-  V_IS[t] <- pi_a[t] / pi_b[t] * (H[t, 'r'])
-  
-  for(t in (horizon-1):1){
-    V_IS[t] <- V_IS[t+1] + pi_a[t] / pi_b[t] * (H[t, 'r'])
-  }
-  V_IS_summands <- c(V_IS_summands, V_IS[1])
-}
+
 
 ## Step-wise Weighted Importance Sampling. Following paper 2015 by Nan Jiang and Nihong Li
 # Should be made more efficient
@@ -103,21 +87,6 @@ expit <- function(x) { 1 / (1 + exp(-x)) }
 logit <- function(x) { log(x / (1 - x)) }
 
 # LTMLE -------------------------------------------------------------------
-# Generate dataset
-generate_discrete_MDP_trajectory_with_pi_a_pi_b <- function(s0, state_transition_matrix,
-                                                             behavior_action_matrix,
-                                                             transition_based_rewards,
-                                                             horizon){
-  H <- generate_discrete_MDP_trajectory(s0, state_transition_matrix,
-                                        behavior_action_matrix,
-                                        transition_based_rewards,
-                                        horizon)
-  pi_b <- apply(H, 1, function(x) behavior_action_matrix[x[1], x[2]]) # propensity score 
-  pi_a <- apply(H, 1, function(x) evaluation_action_matrix[x[1], x[2]]) # probabilities of actions taken in H under the evaluation policy
-  rho_t <- cumprod(pi_a/pi_b)
-  cbind(H, pi_a=pi_a, pi_b=pi_b, rho_t=rho_t)
-}
-
 # LTMLE on an example
 n <- 10000
 D <- aperm(replicate(n, generate_discrete_MDP_trajectory_with_pi_a_pi_b(1, state_transition_matrix,
