@@ -1,7 +1,7 @@
 library(tensorA)
 library(here)
 source(here("R/MDP_modelWin.R"))
-source(here("R/utils.R"))
+source(here("R/est_utils.R"))
 
 #Set simulaton parameters:
 M=100
