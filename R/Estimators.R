@@ -25,6 +25,7 @@ DR_estimator <- function(D, Q_hat, V_hat){
   n <- dim(D)[1]
   horizon <- dim(D)[2]
   V_DR <- matrix(NA, nrow=n, ncol=horizon)
+  t <- horizon
   V_DR[, t] <- (V_hat[t, D[, t, 's']]
                 +  D[, t, 'pi_a'] / D[, t, 'pi_b'] * (D[, t, 'r'] - apply(D[, t, ], 1, function(x) Q_hat[t, x['s'], x['a']]))
                 )
@@ -51,9 +52,46 @@ WDR_estimator <- function(D, Q_hat, V_hat){
   mean(V_DR[, 1])
 }
 
+
+# Two helper functions
+# Expit and logit
+expit <- function(x) { 1 / (1 + exp(-x)) } 
+logit <- function(x) { log(x / (1 - x)) }
+
+# LTMLE
+LTMLE_estimator <-  function(D, Q_hat, V_hat){
+  # Get dataset dimensions
+  n <- dim(D)[1]
+  horizon <- dim(D)[2]
+  
+  epsilons <- c()
+  V_evaluated <- rep(0, n) #V_{t+1}(S_{t+1})
+  for(t in horizon:1){
+    Delta_t <- horizon + 1 - t
+    R <- D[, t, 'r'] # R_t
+    U_tilde <- (R + V_evaluated + Delta_t) / (2 * Delta_t) # U_tilde = R_tilde_t + V_tilde_{t+1}(S_t) in the notations of the write-up
+    Q_t_evaluated <- apply(D[ , t, ], 1, function(x) Q_hat[t, x['s'], x['a']]) # Q_t(A_t, S_t)
+    Q_tilde_t_evaluated <- (Q_t_evaluated + Delta_t) / (2 * Delta_t)
+    epsilon <- glm(U_tilde ~ offset(logit(Q_tilde_t_evaluated)) + 1, 
+                   family=quasibinomial, weights = D[,t, 'rho_t'])$coefficients[1]
+    epsilons <- c(epsilons, epsilon)
+    # Evaluate Q_tilde(s_t, a) for a_t = 1, a_t = 2
+    Q_tilde_t_star <- expit(logit((Q_hat[t, ,] + Delta_t) / (2 * Delta_t)) + epsilon) # Q_tilde_t^*
+    # Then set V_tilde(s_t) = \sum_{a} Q_tilde(s_t, a) pi_a(a|s_t)
+    V_tilde <- apply(Q_tilde_t_star * evaluation_action_matrix, 1, sum)
+    # Compute V = 2 * Delta_t * (V_tilde - 1)
+    V <- 2 * Delta_t * (V_tilde - 1/2)
+    # Evaluate V
+    V_evaluated <-  V[D[, t, 's']]
+    # V_tilde is gonna be V_{t+1} in the next iteration
+  }
+  # The average of the last V is the LTML estimator of the value
+  V_hat_LTMLE <- mean(V_evaluated)
+}
+
 # Debugging experiments ---------------------------------------------------
 source('MDP_modelWin.R')
-horizon <- 5; n <- 1e4
+horizon <- 15; n <- 1e4
 V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix, 
                                   transition_based_rewards, 
                                   evaluation_action_matrix, horizon)
@@ -69,4 +107,5 @@ cat('IS: ', IS_estimator(D), '\n')
 cat('WIS: ', WIS_estimator(D), '\n')
 cat('stepIS: ', stepIS_estimator(D), '\n')
 cat('stepWIS: ', stepWIS_estimator(D), '\n')
-cat('DR: ', DR_estimator(D, Q_hat=Q0, V_hat=V0))
+cat('DR: ', DR_estimator(D, Q_hat=Q0, V_hat=V0), '\n')
+cat('LTMLE: ', LTMLE_estimator(D, Q_hat=Q0, V_hat=V0), '\n')
