@@ -90,22 +90,61 @@ LTMLE_estimator <-  function(D, Q_hat, V_hat){
 }
 
 # Debugging experiments ---------------------------------------------------
-source('MDP_modelWin.R')
+# source('MDP_modelWin.R')
+# horizon <- 15; n <- 1e4
+# V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix, 
+#                                   transition_based_rewards, 
+#                                   evaluation_action_matrix, horizon)
+# V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
+
+# D <- generate_discrete_MDP_dataset(n, 1, state_transition_matrix,
+#                                    behavior_action_matrix,
+#                                    transition_based_rewards,
+#                                    horizon)
+# 
+# cat('True V0: ', V0[1, 1], '\n')
+# cat('IS: ', IS_estimator(D), '\n')
+# cat('WIS: ', WIS_estimator(D), '\n')
+# cat('stepIS: ', stepIS_estimator(D), '\n')
+# cat('stepWIS: ', stepWIS_estimator(D), '\n')
+# cat('DR: ', DR_estimator(D, Q_hat=Q0, V_hat=V0), '\n')
+# cat('LTMLE: ', LTMLE_estimator(D, Q_hat=Q0, V_hat=V0), '\n')
+
+
+# Simulations -------------------------------------------------------------
 horizon <- 15; n <- 1e4
-V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix, 
-                                  transition_based_rewards, 
+V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
+                                  transition_based_rewards,
                                   evaluation_action_matrix, horizon)
 V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
+# Specify jobs ------------------------------------------------------------
+nb_repeats <- 5
+ns <- c(100, 500, 1000, 10000)
+jobs <- expand.grid(n = ns, repeat.id = 1:nb_repeats)
 
-D <- generate_discrete_MDP_dataset(n, 1, state_transition_matrix,
-                                   behavior_action_matrix,
-                                   transition_based_rewards,
-                                   horizon)
+library(foreach); library(doParallel)
+cat(detectCores(), 'cores detected\n')
+cl <- makeCluster(getOption("cl.cores", detectCores()-1), outfile = '')
+registerDoParallel(cl)
 
-cat('True V0: ', V0[1, 1], '\n')
-cat('IS: ', IS_estimator(D), '\n')
-cat('WIS: ', WIS_estimator(D), '\n')
-cat('stepIS: ', stepIS_estimator(D), '\n')
-cat('stepWIS: ', stepWIS_estimator(D), '\n')
-cat('DR: ', DR_estimator(D, Q_hat=Q0, V_hat=V0), '\n')
-cat('LTMLE: ', LTMLE_estimator(D, Q_hat=Q0, V_hat=V0), '\n')
+
+
+results <- foreach(i=1:nrow(jobs), .combine = rbind,
+                             #.packages = c('speedglm'),
+                             #.export = c('TMLE_EY1_speedglm', 'CV_AIPTW_EY1', 'expit', 'logit', 'g_to_g_delta'),
+                             .verbose = T, .inorder = T) %dopar% {
+                               D <- generate_discrete_MDP_dataset(jobs[i, ]$n, 1, state_transition_matrix,
+                                                                  behavior_action_matrix,
+                                                                  transition_based_rewards,
+                                                                  horizon)
+                               rbind(c(n=jobs[i, ]$n, estimator='IS', estimate=IS_estimator(D)),
+                                     c(n=jobs[i, ]$n, estimator='WIS', estimate=WIS_estimator(D)),
+                                     c(n=jobs[i, ]$n, estimator='stepIS', estimate=stepIS_estimator(D)),
+                                     c(n=jobs[i, ]$n, estimator='stepWIS', estimate=stepWIS_estimator(D)),
+                                     c(n=jobs[i, ]$n, estimator='DR',  estimate=DR_estimator(D, Q_hat=Q0, V_hat=V0)),
+                                     c(n=jobs[i, ]$n, estimator='LTMLE', estimate=LTMLE_estimator(D, Q_hat=Q0, V_hat=V0))
+                                     )
+                             }
+results_df <- transform(as.data.frame(results), 
+                        n=as.numeric(as.character(n)),
+                        estimate=as.numeric(as.character(estimate)))
