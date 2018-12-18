@@ -37,7 +37,7 @@ DR_estimator_JL <- function(D, Q_hat, V_hat){ # Jiang and Li's DR estimator, bas
   mean(V_DR[, 1])
 }
 
-DR_estimator_TB <- function(D, Q_hat, V_hat){
+DR_estimator_TB <- function(D, Q_hat, V_hat){ # Thomas and Brunskill's DR estimator. Turns out that it is exactly the same as Jiang and Li's
   n <- dim(D)[1]
   horizon <- dim(D)[2]
   D_star <- matrix(NA, nrow=n, ncol=horizon)
@@ -47,6 +47,23 @@ DR_estimator_TB <- function(D, Q_hat, V_hat){
   for(t in (horizon-1):1){
     D_star[, t] <- D[, t, 'rho_t'] * (D[, t, 'r'] + V_hat[t, D[, t+1, 's']]
                                                       - apply(D[, t, ], 1, function(x) Q_hat[t, x['s'], x['a']]))
+  }
+  mean(V_hat[t, D[, 1, 's']] + apply(D_star, 1, sum))
+}
+
+WDR_estimator_TB <- function(D, Q_hat, V_hat){ # Thomas and Brunskill's Weighted DR estimator
+  n <- dim(D)[1]
+  horizon <- dim(D)[2]
+  D_star <- matrix(NA, nrow=n, ncol=horizon)
+  t <- horizon
+  
+  w_t <- apply(D[, , 'rho_t'], 2, mean)
+
+  D_star[, t] <- D[, , 'rho_t'] / (rep(1, n) %*% t(w_t)) * (D[, t, 'r'] + 
+                                      - apply(D[, t, ], 1, function(x) Q_hat[t, x['s'], x['a']]))
+  for(t in (horizon-1):1){
+    D_star[, t] <- D[, , 'rho_t'] / (rep(1, n) %*% t(w_t)) * (D[, t, 'r'] + V_hat[t, D[, t+1, 's']]
+                                      - apply(D[, t, ], 1, function(x) Q_hat[t, x['s'], x['a']]))
   }
   mean(V_hat[t, D[, 1, 's']] + apply(D_star, 1, sum))
 }
@@ -108,14 +125,14 @@ LTMLE_estimator <-  function(D, Q_hat, V_hat){
 # cat('LTMLE: ', LTMLE_estimator(D, Q_hat=Q0, V_hat=V0), '\n')
 
 # Simulations -------------------------------------------------------------
-horizon <- 50
+horizon <- 5
 V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
                                   transition_based_rewards,
                                   evaluation_action_matrix, horizon)
 V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
 # Specify jobs ------------------------------------------------------------
 library(foreach); library(doParallel)
-nb_repeats <- (detectCores() - 1) * 2
+nb_repeats <- (detectCores() - 1) * 10
 ns <- c(50, 100, 200, 500, 1000
         #, 5000, 10000
         )
@@ -140,8 +157,9 @@ results <- foreach(i=1:nrow(jobs), .combine = rbind,
                                      c(n=jobs[i, ]$n, estimator='WIS', estimate=WIS_estimator(D)),
                                      c(n=jobs[i, ]$n, estimator='stepIS', estimate=stepIS_estimator(D)),
                                      c(n=jobs[i, ]$n, estimator='stepWIS', estimate=stepWIS_estimator(D)),
-                                     c(n=jobs[i, ]$n, estimator='DR_JL',  estimate=DR_estimator_JL(D, Q_hat=Q0, V_hat=V0)),
-                                     c(n=jobs[i, ]$n, estimator='DR_TB',  estimate=DR_estimator_JL(D, Q_hat=Q0, V_hat=V0)),
+                                     c(n=jobs[i, ]$n, estimator='DR',  estimate=DR_estimator_JL(D, Q_hat=Q0, V_hat=V0)),
+                                     # c(n=jobs[i, ]$n, estimator='DR_TB',  estimate=DR_estimator_TB(D, Q_hat=Q0, V_hat=V0)),
+                                     c(n=jobs[i, ]$n, estimator='WDR',  estimate=WDR_estimator_JL(D, Q_hat=Q0, V_hat=V0)),
                                      c(n=jobs[i, ]$n, estimator='LTMLE', estimate=LTMLE_estimator(D, Q_hat=Q0, V_hat=V0))
                                      )
                              }
