@@ -112,17 +112,18 @@ LTMLE_estimator <-  function(D, Q_hat, V_hat){
 
 
 # Simulations -------------------------------------------------------------
-horizon <- 15; n <- 1e4
+horizon <- 15
 V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
                                   transition_based_rewards,
                                   evaluation_action_matrix, horizon)
 V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
 # Specify jobs ------------------------------------------------------------
-nb_repeats <- 5
+library(foreach); library(doParallel)
+nb_repeats <- detectCores() * 10
 ns <- c(100, 500, 1000, 10000)
 jobs <- expand.grid(n = ns, repeat.id = 1:nb_repeats)
 
-library(foreach); library(doParallel)
+
 cat(detectCores(), 'cores detected\n')
 cl <- makeCluster(getOption("cl.cores", detectCores()-1), outfile = '')
 registerDoParallel(cl)
@@ -148,3 +149,12 @@ results <- foreach(i=1:nrow(jobs), .combine = rbind,
 results_df <- transform(as.data.frame(results), 
                         n=as.numeric(as.character(n)),
                         estimate=as.numeric(as.character(estimate)))
+results_df$squared_error <- (results_df$estimate - V0[1,1])^2
+
+MSE_table <- aggregate(results_df$squared_error, 
+                       list(estimator=results_df$estimator, n=results_df$n), 
+                       mean)
+colnames(MSE_table)[3] <- 'MSE'
+library(ggplot2)
+MSE_plot <- ggplot(data=MSE_table, aes(x=log10(n), y=log10(MSE), color=estimator)) + geom_line() + geom_point()
+print(MSE_plot)
