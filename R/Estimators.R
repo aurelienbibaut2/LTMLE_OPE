@@ -125,16 +125,15 @@ LTMLE_estimator <-  function(D, Q_hat, V_hat){
 # cat('LTMLE: ', LTMLE_estimator(D, Q_hat=Q0, V_hat=V0), '\n')
 
 # Simulations -------------------------------------------------------------
-horizon <- 50
+horizon <- 100
 V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
                                   transition_based_rewards,
                                   evaluation_action_matrix, horizon)
 V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
 # Specify jobs ------------------------------------------------------------
 library(foreach); library(doParallel)
-nb_repeats <- (detectCores() - 1) * 2
-ns <- c(50, 100, 200, 500, 1000
-        #, 5000, 10000
+nb_repeats <- (detectCores() - 1) * 10
+ns <- c(50, 100, 200, 500, 1000, 5000, 10000
         )
 jobs <- expand.grid(n = ns, repeat.id = 1:nb_repeats)
 
@@ -173,6 +172,8 @@ MSE_table <- aggregate(results_df$squared_error,
                        mean)
 colnames(MSE_table)[3] <- 'MSE'
 library(ggplot2)
-MSE_plot <- ggplot(data=MSE_table, aes(x=log10(n), y=log10(MSE), color=estimator)) + 
-  geom_line() + geom_point() + ggtitle(paste('ModelWin, horizon=', horizon, ', number of draws per point=', nb_repeats))
+MSE_plot <- ggplot(data=MSE_table, aes(x=log10(n), y=log10(MSE), color=estimator, shape=estimator, size=estimator)) + 
+  scale_shape_manual( values=c('LTMLE'=15, 'DR'=19, 'IS'=19, 'stepIS'=19, 'stepWIS'=19, 'WDR'=19, 'WIS'=19)) +
+  scale_size_manual( values=c('LTMLE'=6, 'DR'=2, 'IS'=2, 'stepIS'=2, 'stepWIS'=2, 'WDR'=2, 'WIS'=2)) +
+  geom_line(size=1) + geom_point() + ggtitle(paste('ModelWin, horizon=', horizon, ', number of draws per point=', nb_repeats))
 print(MSE_plot)
