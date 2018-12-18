@@ -112,14 +112,14 @@ LTMLE_estimator <-  function(D, Q_hat, V_hat){
 
 
 # Simulations -------------------------------------------------------------
-horizon <- 15
+horizon <- 100
 V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
                                   transition_based_rewards,
                                   evaluation_action_matrix, horizon)
 V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
 # Specify jobs ------------------------------------------------------------
 library(foreach); library(doParallel)
-nb_repeats <- detectCores() * 10
+nb_repeats <- (detectCores() - 1) * 2
 ns <- c(100, 500, 1000, 10000)
 jobs <- expand.grid(n = ns, repeat.id = 1:nb_repeats)
 
@@ -156,5 +156,6 @@ MSE_table <- aggregate(results_df$squared_error,
                        mean)
 colnames(MSE_table)[3] <- 'MSE'
 library(ggplot2)
-MSE_plot <- ggplot(data=MSE_table, aes(x=log10(n), y=log10(MSE), color=estimator)) + geom_line() + geom_point()
+MSE_plot <- ggplot(data=MSE_table, aes(x=log10(n), y=log10(MSE), color=estimator)) + 
+  geom_line() + geom_point() + ggtitle(paste('ModelWin, horizon=', horizon, ', number of draws per point=', nb_repeats))
 print(MSE_plot)
