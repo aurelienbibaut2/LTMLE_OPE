@@ -21,7 +21,7 @@ stepWIS_estimator <- function(D){
   mean(apply(D[, , 'r'] * D[, , 'rho_t'] / (rep(1, n) %*% t(w_t)), 1, sum))
 }
 
-DR_estimator <- function(D, Q_hat, V_hat){
+DR_estimator_JL <- function(D, Q_hat, V_hat){ # Jiang and Li's DR estimator, based on a recursive formula
   n <- dim(D)[1]
   horizon <- dim(D)[2]
   V_DR <- matrix(NA, nrow=n, ncol=horizon)
@@ -37,21 +37,19 @@ DR_estimator <- function(D, Q_hat, V_hat){
   mean(V_DR[, 1])
 }
 
-WDR_estimator <- function(D, Q_hat, V_hat){
+DR_estimator_TB <- function(D, Q_hat, V_hat){
   n <- dim(D)[1]
   horizon <- dim(D)[2]
-  V_DR <- matrix(NA, nrow=n, ncol=horizon)
-  V_DR[, t] <- (V_hat[t, D[, t, 's']]
-                +  D[, t, 'pi_a'] / D[, t, 'pi_b'] * (D[, t, 'r'] - apply(D[, t, ], 1, function(x) Q_hat[t, x['s'], x['a']]))
-  )
+  D_star <- matrix(NA, nrow=n, ncol=horizon)
+  t <- horizon
+  D_star[, t] <- D[, t, 'rho_t'] * (D[, t, 'r'] + 
+                                    - apply(D[, t, ], 1, function(x) Q_hat[t, x['s'], x['a']]))
   for(t in (horizon-1):1){
-    V_DR[, t] <- (V_hat[t, D[, t, 's']] 
-                  +  D[, t, 'pi_a'] / D[, t, 'pi_b'] * (D[, t, 'r'] + V_DR[, t+1] - apply(D[, t, ], 1, function(x) Q_hat[t, x['s'], x['a']]))
-    )
+    D_star[, t] <- D[, t, 'rho_t'] * (D[, t, 'r'] + V_hat[t, D[, t+1, 's']]
+                                                      - apply(D[, t, ], 1, function(x) Q_hat[t, x['s'], x['a']]))
   }
-  mean(V_DR[, 1])
+  mean(V_hat[t, D[, 1, 's']] + apply(D_star, 1, sum))
 }
-
 
 # Two helper functions
 # Expit and logit
@@ -91,17 +89,16 @@ LTMLE_estimator <-  function(D, Q_hat, V_hat){
 
 # Debugging experiments ---------------------------------------------------
 # source('MDP_modelWin.R')
-# horizon <- 15; n <- 1e4
-# V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix, 
-#                                   transition_based_rewards, 
+# horizon <- 15; n <- 1e3
+# V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
+#                                   transition_based_rewards,
 #                                   evaluation_action_matrix, horizon)
 # V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
-
+# Q_hat <- Q0; V_hat <- V0
 # D <- generate_discrete_MDP_dataset(n, 1, state_transition_matrix,
 #                                    behavior_action_matrix,
 #                                    transition_based_rewards,
 #                                    horizon)
-# 
 # cat('True V0: ', V0[1, 1], '\n')
 # cat('IS: ', IS_estimator(D), '\n')
 # cat('WIS: ', WIS_estimator(D), '\n')
@@ -110,9 +107,8 @@ LTMLE_estimator <-  function(D, Q_hat, V_hat){
 # cat('DR: ', DR_estimator(D, Q_hat=Q0, V_hat=V0), '\n')
 # cat('LTMLE: ', LTMLE_estimator(D, Q_hat=Q0, V_hat=V0), '\n')
 
-
 # Simulations -------------------------------------------------------------
-horizon <- 100
+horizon <- 50
 V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
                                   transition_based_rewards,
                                   evaluation_action_matrix, horizon)
@@ -120,7 +116,9 @@ V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
 # Specify jobs ------------------------------------------------------------
 library(foreach); library(doParallel)
 nb_repeats <- (detectCores() - 1) * 2
-ns <- c(100, 500, 1000, 10000)
+ns <- c(50, 100, 200, 500, 1000
+        #, 5000, 10000
+        )
 jobs <- expand.grid(n = ns, repeat.id = 1:nb_repeats)
 
 
@@ -142,7 +140,8 @@ results <- foreach(i=1:nrow(jobs), .combine = rbind,
                                      c(n=jobs[i, ]$n, estimator='WIS', estimate=WIS_estimator(D)),
                                      c(n=jobs[i, ]$n, estimator='stepIS', estimate=stepIS_estimator(D)),
                                      c(n=jobs[i, ]$n, estimator='stepWIS', estimate=stepWIS_estimator(D)),
-                                     c(n=jobs[i, ]$n, estimator='DR',  estimate=DR_estimator(D, Q_hat=Q0, V_hat=V0)),
+                                     c(n=jobs[i, ]$n, estimator='DR_JL',  estimate=DR_estimator_JL(D, Q_hat=Q0, V_hat=V0)),
+                                     c(n=jobs[i, ]$n, estimator='DR_TB',  estimate=DR_estimator_JL(D, Q_hat=Q0, V_hat=V0)),
                                      c(n=jobs[i, ]$n, estimator='LTMLE', estimate=LTMLE_estimator(D, Q_hat=Q0, V_hat=V0))
                                      )
                              }
