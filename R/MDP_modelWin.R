@@ -23,7 +23,7 @@ generate_discrete_MDP_trajectory <- function(s0, state_transition_matrix,
 generate_discrete_MDP_trajectory_with_pi_a_pi_b <- function(s0, state_transition_matrix,
                                                             behavior_action_matrix,
                                                             transition_based_rewards,
-                                                            horizon){
+                                                            horizon, gamma=1){
   H <- generate_discrete_MDP_trajectory(s0, state_transition_matrix,
                                         behavior_action_matrix,
                                         transition_based_rewards,
@@ -31,24 +31,26 @@ generate_discrete_MDP_trajectory_with_pi_a_pi_b <- function(s0, state_transition
   pi_b <- apply(H, 1, function(x) behavior_action_matrix[x[1], x[2]]) # propensity score 
   pi_a <- apply(H, 1, function(x) evaluation_action_matrix[x[1], x[2]]) # probabilities of actions taken in H under the evaluation policy
   rho_t <- cumprod(pi_a/pi_b)
-  cbind(H, pi_a=pi_a, pi_b=pi_b, rho_t=rho_t)
+  rtg <- rev(cumsum(rev(gamma^(1:nrow(H)) * H[, 'r']))) / (gamma^(1:nrow(H)))
+  gamma_t <- gamma^(1:nrow(H))
+  cbind(H, pi_a=pi_a, pi_b=pi_b, rho_t=rho_t, rtg=rtg, gamma_t=gamma_t)
 }
 
 # Generate dataset, that is a bundle of trajectories
 generate_discrete_MDP_dataset <- function(n, s0, state_transition_matrix,
                                           behavior_action_matrix,
                                           transition_based_rewards,
-                                          horizon){
+                                          horizon, gamma=1){
   aperm(replicate(n, generate_discrete_MDP_trajectory_with_pi_a_pi_b(s0, state_transition_matrix,
-                                                                        behavior_action_matrix,
-                                                                        transition_based_rewards,
-                                                                        horizon)), c(3,1,2))
+                                                                     behavior_action_matrix,
+                                                                     transition_based_rewards,
+                                                                     horizon, gamma)), c(3,1,2))
 }
 
 # Dynamic programming based computation of the value function
 compute_true_V_and_Q <- function(state_transition_matrix,
                                  transition_based_rewards,
-                                 evaluation_action_matrix, horizon){
+                                 evaluation_action_matrix, horizon, gamma=1){
   # True value-to-go under policy pi
   # Compute the true value-to-go under pi with dynamic programming
   state_transition_tensor <- as.tensor(state_transition_matrix, dims=c(s=3, a=2, new_s=3))
@@ -62,18 +64,18 @@ compute_true_V_and_Q <- function(state_transition_matrix,
   V0[horizon, ] <- mul.tensor(ER, i='a', pi_tensor, j='a', by='s')
   for(t in (horizon-1):1){
     V0[t, ] = (mul.tensor(ER, i='a', pi_tensor, j='a', by='s')
-               + mul.tensor(X=pi_tensor, i='a',
-                            
-                            Y=mul.tensor(state_transition_tensor, i='new_s', 
-                                         as.tensor(V0[t+1, ], dims=c('new_s'=3)), j='new_s',
-                                         by=c('s', 'a')),
-                            
-                            j='a',
-                            by='s')
+               + gamma * mul.tensor(X=pi_tensor, i='a',
+                                    
+                                    Y=mul.tensor(state_transition_tensor, i='new_s', 
+                                                 as.tensor(V0[t+1, ], dims=c('new_s'=3)), j='new_s',
+                                                 by=c('s', 'a')),
+                                    
+                                    j='a',
+                                    by='s')
     )
-    Q0[t, , ] <- (ER + mul.tensor(state_transition_tensor, i='new_s',
-                                  as.tensor(V0[t+1, ], dims=c('new_s'=3)), j='new_s',
-                                  by=c('s', 'a')))
+    Q0[t, , ] <- (ER + gamma * mul.tensor(state_transition_tensor, i='new_s',
+                                          as.tensor(V0[t+1, ], dims=c('new_s'=3)), j='new_s',
+                                          by=c('s', 'a')))
   }
   list(V0=V0, Q0=Q0)
 }
