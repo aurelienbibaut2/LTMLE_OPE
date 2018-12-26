@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-source(here("R/mdp_utils.R"))
-=======
 library(tensorA)
 # Generate a discrete MDP trajectory
 generate_discrete_MDP_trajectory <- function(s0, state_transition_matrix,
@@ -123,7 +120,6 @@ MC_direct_evaluation <- function(state_transition_matrix,
   }
   mean(total_rewards)
 }
->>>>>>> LTMLE_first_implementation
 
 # ModelWin environment specification (see page 24 of Thomas and Brunskill)
 # Define MDP transition matrices

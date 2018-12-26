@@ -1,3 +1,14 @@
+AM_estimator <- function(D,V_hat,d_hat=NA,t){ # Thomas and Brunskill's Formula for Approximate Model pg.4
+  #Use data to get the estimate of d and V_hat
+  if(is.na(d_hat)){
+    d_hat<-data.frame(s=unique(as.vector(D[,,'s'])))  
+    inter<-table(D[, 1, 's'])/length(D[, 1, 's'])
+    d_hat[(d_hat$s %in% attr(inter, which = "dimnames")[[1]]),2]<-table(D[, 1, 's'])/length(D[, 1, 's'])
+    d_hat[is.na(d_hat)]<-0
+  }
+  sum(V_hat[t,]*d_hat$V2)
+}
+
 IS_estimator <- function(D){
   horizon <- dim(D)[2]
   mean(D[, horizon, 'rho_t'] * apply(D[, , 'r'], 1, sum))
@@ -14,11 +25,10 @@ stepIS_estimator <- function(D){
   mean(apply(D[, , 'r'] * D[, , 'rho_t'], 1, sum))
 }
 
-stepWIS_estimator <- function(D){
+stepWIS_estimator <- function(D,t){
   n <- dim(D)[1]
-  horizon <- dim(D)[2]
   w_t <- apply(D[, , 'rho_t'], 2, mean)
-  mean(apply(D[, , 'r'] * D[, , 'rho_t'] / (rep(1, n) %*% t(w_t)), 1, sum))
+  mean(apply(D[, , 'r'][,1:t] * D[, , 'rho_t'][,1:t] / (rep(1, n) %*% t(w_t[1:t])), 1, sum))
 }
 
 DR_estimator_JL <- function(D, Q_hat, V_hat){ # Jiang and Li's DR estimator, based on a recursive formula
@@ -103,3 +113,5 @@ LTMLE_estimator <-  function(D, Q_hat, V_hat){
   # The average of the last V is the LTML estimator of the value
   V_hat_LTMLE <- mean(V_evaluated)
 }
+
+
