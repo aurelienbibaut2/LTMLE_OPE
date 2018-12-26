@@ -28,4 +28,3 @@ cat('stepIS: ', stepIS_estimator(D), '\n')
 cat('stepWIS: ', stepWIS_estimator(D), '\n')
 cat('DR: ', DR_estimator_TB(D, Q_hat=Q0, V_hat=V0), '\n')
 cat('LTMLE: ', LTMLE_estimator(D, Q_hat=Q0, V_hat=V0), '\n')
-
