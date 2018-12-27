@@ -1,10 +1,10 @@
-AM_estimator <- function(D,V_hat,d_hat=NA,t){ # Thomas and Brunskill's Formula for Approximate Model pg.4
+AM_estimator <- function(D, V_hat, d_hat=NA, t){ # Thomas and Brunskill's Formula for Approximate Model pg.4
   #Use data to get the estimate of d and V_hat
   if(is.na(d_hat)){
-    d_hat<-data.frame(s=unique(as.vector(D[,,'s'])))  
-    inter<-table(D[, 1, 's'])/length(D[, 1, 's'])
-    d_hat[(d_hat$s %in% attr(inter, which = "dimnames")[[1]]),2]<-table(D[, 1, 's'])/length(D[, 1, 's'])
-    d_hat[is.na(d_hat)]<-0
+    d_hat <- data.frame(s=unique(as.vector(D[,,'s'])))  
+    inter <- table(D[, 1, 's']) / length(D[, 1, 's'])
+    d_hat[(d_hat$s %in% attr(inter, which = "dimnames")[[1]]),2] <- table(D[, 1, 's'])/length(D[, 1, 's'])
+    d_hat[is.na(d_hat)] <- 0
   }
   sum(V_hat[t,]*d_hat$V2)
 }
@@ -25,10 +25,11 @@ stepIS_estimator <- function(D){
   mean(apply(D[, , 'r'] * D[, , 'rho_t'], 1, sum))
 }
 
-stepWIS_estimator <- function(D,t){
+stepWIS_estimator <- function(D, t=NULL){
+  if(is.null(t)) t <- dim(D)[2] # By default, compute the WIS estimator for the value of the entire trajectory
   n <- dim(D)[1]
   w_t <- apply(D[, , 'rho_t'], 2, mean)
-  mean(apply(D[, , 'r'][,1:t] * D[, , 'rho_t'][,1:t] / (rep(1, n) %*% t(w_t[1:t])), 1, sum))
+  mean(apply(D[, 1:t, 'r'] * D[, 1:t, 'rho_t'] / (rep(1, n) %*% t(w_t[1:t])), 1, sum))
 }
 
 DR_estimator_JL <- function(D, Q_hat, V_hat){ # Jiang and Li's DR estimator, based on a recursive formula
@@ -55,27 +56,41 @@ DR_estimator_TB <- function(D, Q_hat, V_hat){ # Thomas and Brunskill's DR estima
   D_star[, t] <- D[, t, 'rho_t'] * (D[, t, 'r'] + 
                                     - apply(D[, t, ], 1, function(x) Q_hat[t, x['s'], x['a']]))
   for(t in (horizon-1):1){
-    D_star[, t] <- D[, t, 'rho_t'] * (D[, t, 'r'] + V_hat[t, D[, t+1, 's']]
+    D_star[, t] <- D[, t, 'rho_t'] * (D[, t, 'r'] + V_hat[t+1, D[, t+1, 's']]
                                                       - apply(D[, t, ], 1, function(x) Q_hat[t, x['s'], x['a']]))
   }
   mean(V_hat[t, D[, 1, 's']] + apply(D_star, 1, sum))
 }
 
-WDR_estimator_TB <- function(D, Q_hat, V_hat){ # Thomas and Brunskill's Weighted DR estimator
+# Thomas and Brunskill's Weighted DR estimator
+# Needs to be provided with a Q_hat and a V_hat that have dimension
+# horizon x n_states x n_actions and horizon x n_states, respectively
+# With the function implemented below, g^(j)(D) is just WDR_estimator(D, Q_hat, V_hat, gamma, j)
+WDR_estimator_TB <- function(D, Q_hat, V_hat, gamma=1, j=NULL){ 
   n <- dim(D)[1]
   horizon <- dim(D)[2]
-  D_star <- matrix(NA, nrow=n, ncol=horizon)
-  t <- horizon
-  
+  if(is.null(j)) j <- horizon
+  D_star <- matrix(NA, nrow=n, ncol=j)
+  # Compute mean rho_t to be used as denominator in the stabilized weights
   w_t <- apply(D[, , 'rho_t'], 2, mean)
-
-  D_star[, t] <- D[, t, 'rho_t'] / w_t[t] * (D[, t, 'r'] + 
-                                      - apply(D[, t, ], 1, function(x) Q_hat[t, x['s'], x['a']]))
-  for(t in (horizon-1):1){
-    D_star[, t] <- D[, t, 'rho_t'] / w_t[t] * (D[, t, 'r'] + V_hat[t, D[, t+1, 's']]
-                                      - apply(D[, t, ], 1, function(x) Q_hat[t, x['s'], x['a']]))
+  
+  # D_star below is computed slightly differently whether t=horizon or t <= horizon-1
+  # The reason is that V_hat[horizon+1, s] is zero in reality for every s, but the
+  # row V_hat[horizon+1, ] does not exist in the V_hat passed as argument 
+  # (there is no need to have a row for V_hat[horizon+1, ] as we know it's zero.
+  if(j == horizon){
+    t <- j
+    D_star[, t] <- gamma^t * D[, t, 'rho_t'] / w_t[t] * (D[, t, 'r'] + 
+                                                           - apply(D[, t, ], 1, function(x) Q_hat[t, x['s'], x['a']]))
   }
-  mean(V_hat[t, D[, 1, 's']] + apply(D_star, 1, sum))
+  
+  if(j > 0){
+    for(t in (min(horizon-1, j)):1){
+      D_star[, t] <- gamma^t * D[, t, 'rho_t'] / w_t[t] * (D[, t, 'r'] + gamma * V_hat[t+1, D[, t+1, 's']]
+                                                           - apply(D[, t, ], 1, function(x) Q_hat[t, x['s'], x['a']]))
+    }
+  }
+  mean(V_hat[1, D[, 1, 's']] + apply(D_star, 1, sum))
 }
 
 # Two helper functions
@@ -84,7 +99,7 @@ expit <- function(x) { 1 / (1 + exp(-x)) }
 logit <- function(x) { log(x / (1 - x)) }
 
 # LTMLE
-LTMLE_estimator <-  function(D, Q_hat, V_hat){
+LTMLE_estimator <-  function(D, Q_hat, V_hat, evaluation_action_matrix){
   # Get dataset dimensions
   n <- dim(D)[1]
   horizon <- dim(D)[2]
@@ -113,5 +128,3 @@ LTMLE_estimator <-  function(D, Q_hat, V_hat){
   # The average of the last V is the LTML estimator of the value
   V_hat_LTMLE <- mean(V_evaluated)
 }
-
-

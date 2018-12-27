@@ -35,7 +35,8 @@ results <- foreach(i=1:nrow(jobs), .combine = rbind,
                            c(n=jobs[i, ]$n, estimator='DR',  estimate=DR_estimator_JL(D, Q_hat=Q0, V_hat=V0)),
                            # c(n=jobs[i, ]$n, estimator='DR_TB',  estimate=DR_estimator_TB(D, Q_hat=Q0, V_hat=V0)),
                            c(n=jobs[i, ]$n, estimator='WDR',  estimate=WDR_estimator_TB(D, Q_hat=Q0, V_hat=V0)),
-                           c(n=jobs[i, ]$n, estimator='LTMLE', estimate=LTMLE_estimator(D, Q_hat=Q0, V_hat=V0))
+                           c(n=jobs[i, ]$n, estimator='LTMLE', estimate=LTMLE_estimator(D, Q_hat=Q0, V_hat=V0, 
+                                                                                        evaluation_action_matrix=evaluation_action_matrix))
                      )
                    }
 
