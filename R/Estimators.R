@@ -151,7 +151,7 @@ bootstrap_bias <- function(D, Q0, V0, number_bootstrap = 1e3, alpha = 0.1) {
   return(wdr_quantiles)
 }
 
-MAGIC_estimator<-function(D,Q_hat,V_hat,gamma=1,k=1e4,alpha=0.1,N=100){
+MAGIC_estimator<-function(D,Q_hat,V_hat,gamma=1,k=1e4,alpha=0.1){
   
   horizon <- dim(D)[2]
   n <- dim(D)[1]
