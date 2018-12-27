@@ -1,5 +1,6 @@
 # Make dataset of transitions with next state and done indicator
 make_transitions_dataset <- function(D){
+  horizon <- dim(D)[2]
   add_new_s <- function(d, horizon){
     cbind( d[1:horizon, c('s', 'a', 'r')], new_s = c(d[2:horizon, 's'], NA) , done = c(rep(0, horizon-1), 1) )
   }
@@ -17,23 +18,26 @@ na_to_zero <- Vectorize(function(x){
 
 # Bellman iterations
 bellman_iterations <- function(transitions_dataset, evaluation_action_matrix, gamma, n_iterations, 
-                               Q_hat_init=NULL){
+                               Q_hat_init=NULL, V0=NULL){
   # Initialize Q_hat and other things to be initialized
   bellman_dataset <- cbind(transitions_dataset, bellman_target=0)
   n_states <- dim(evaluation_action_matrix)[1]; n_actions <- dim(evaluation_action_matrix)[2]
-  
+  pi_tensor <- as.tensor(evaluation_action_matrix, dims=c(s=n_states, a=n_actions))
   if(!is.null(Q_hat_init)){
     Q_hat <- Q_hat_init
   }else{
     Q_hat <- array(0, dim=c(n_states, n_actions))
   }
-  pi_tensor <- as.tensor(evaluation_action_matrix, dims=c(s=n_states, a=n_actions))
+  l2_errors <- c()
+  
   
   # Bellman iterations
   for(m in 1:n_iterations){
     # Compute Bellman target
     V_hat <- mul.tensor(as.tensor(Q_hat, dims=c(s=n_states, a=n_actions)), i='a',
                         pi_tensor, j='a', by='s')
+    # If the true V0 is provided, log l2 error
+    if(!is.null(V0)) l2_errors <- c(l2_errors, sum( (as.vector(V_hat) - V0)^2 ) )
     # Regress Q_hat on Bellman target 
     bellman_dataset[, 'bellman_target'] <- apply(transitions_dataset, 1, 
                                                  function(x) x['r'] + gamma * na_to_zero(as.numeric(V_hat[x['new_s']])) )
@@ -41,5 +45,5 @@ bellman_iterations <- function(transitions_dataset, evaluation_action_matrix, ga
     # Update Q_hat
     Q_hat <- outer(1:n_states, 1:n_actions, FUN= function(s, a) predict(Q_hat_lm_fit, newdata=data.frame(cbind(s=s, a=a))) )
   }
-  return(Q_hat)
+  list(Q_hat=Q_hat, l2_errors=l2_errors)
 }

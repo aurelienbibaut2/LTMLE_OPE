@@ -1,9 +1,10 @@
+library(MASS)
 source('MDP_modelWin.R')
 source('Estimators.R')
 
 # Debugging experiments ---------------------------------------------------
 set.seed(1)
-horizon <- 5; n <- 100
+horizon <- 5; n <- 1e4
 V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
                                   transition_based_rewards,
                                   evaluation_action_matrix, horizon)
@@ -25,6 +26,14 @@ cat('True V0: ', V0[1, 1], '\n')
 cat('IS: ', IS_estimator(D), '\n')
 cat('WIS: ', WIS_estimator(D), '\n')
 cat('stepIS: ', stepIS_estimator(D), '\n')
-cat('stepWIS: ', stepWIS_estimator(D), '\n')
+cat('stepWIS: ', stepWIS_estimator(D, horizon), '\n')
 cat('DR: ', DR_estimator_TB(D, Q_hat=Q0, V_hat=V0), '\n')
-cat('LTMLE: ', LTMLE_estimator(D, Q_hat=Q0, V_hat=V0), '\n')
+cat('WDR: ', WDR_estimator_TB(D, Q_hat=Q0, V_hat=V0), '\n')
+cat('LTMLE: ', LTMLE_estimator(D, Q_hat=Q0, V_hat=V0, evaluation_action_matrix=evaluation_action_matrix), '\n')
+
+cat('g^(5):', WDR_estimator_TB(D, Q_hat=Q0, V_hat=V0, gamma=1, j=5), '\n')
+cat('g^(4):', WDR_estimator_TB(D, Q_hat=Q0, V_hat=V0, gamma=1, j=4), '\n')
+cat('g^(3):', WDR_estimator_TB(D, Q_hat=Q0, V_hat=V0, gamma=1, j=3), '\n')
+cat('g^(2):', WDR_estimator_TB(D, Q_hat=Q0, V_hat=V0, gamma=1, j=2), '\n')
+cat('g^(1):', WDR_estimator_TB(D, Q_hat=Q0, V_hat=V0, gamma=1, j=1), '\n')
+cat('g^(0):', WDR_estimator_TB(D, Q_hat=Q0, V_hat=V0, gamma=1, j=0), '\n')
