@@ -6,7 +6,7 @@ AM_estimator <- function(D, V_hat, d_hat=NA, t){ # Thomas and Brunskill's Formul
     d_hat[(d_hat$s %in% attr(inter, which = "dimnames")[[1]]),2] <- table(D[, 1, 's'])/length(D[, 1, 's'])
     d_hat[is.na(d_hat)] <- 0
   }
-  sum(V_hat[t,]*d_hat$V2)
+  sum(V_hat[1,]*d_hat$V2)
 }
 
 IS_estimator <- function(D){
@@ -66,7 +66,7 @@ DR_estimator_TB <- function(D, Q_hat, V_hat){ # Thomas and Brunskill's DR estima
 # Needs to be provided with a Q_hat and a V_hat that have dimension
 # horizon x n_states x n_actions and horizon x n_states, respectively
 # With the function implemented below, g^(j)(D) is just WDR_estimator(D, Q_hat, V_hat, gamma, j)
-WDR_estimator_TB <- function(D, Q_hat, V_hat, gamma=1, j=NULL){ 
+WDR_estimator_TB <- function(D, Q_hat, V_hat, gamma=1, j=NULL, gjD=FALSE){ 
   n <- dim(D)[1]
   horizon <- dim(D)[2]
   if(is.null(j)) j <- horizon
@@ -90,7 +90,11 @@ WDR_estimator_TB <- function(D, Q_hat, V_hat, gamma=1, j=NULL){
                                                            - apply(D[, t, ], 1, function(x) Q_hat[t, x['s'], x['a']]))
     }
   }
-  mean(V_hat[1, D[, 1, 's']] + apply(D_star, 1, sum))
+  if(gjD){
+    return(V_hat[1, D[, 1, 's']] + apply(D_star, 1, sum))
+  }else{
+    mean(V_hat[1, D[, 1, 's']] + apply(D_star, 1, sum))
+  }
 }
 
 # Two helper functions
@@ -127,4 +131,34 @@ LTMLE_estimator <-  function(D, Q_hat, V_hat, evaluation_action_matrix){
   }
   # The average of the last V is the LTML estimator of the value
   V_hat_LTMLE <- mean(V_evaluated)
+}
+
+##MAGIC
+
+library(nloptr)
+library(hitandrun)
+
+MAGIC_estimator<-function(D,evaluation_action_matrix,Q_hat,V_hat,gamma=1,k=1e3,alpha=0.1){
+  
+  horizon <- dim(D)[2]
+  n <- dim(D)[1]
+  
+  #g^(j)(D) for until horizon
+  #0 is AM-based, horizon IS-based
+  gjD<-foreach(i=0:horizon, .combine = rbind, .inorder=T) %dopar% 
+  {WDR_estimator_TB(D=D,Q_hat=Q_hat,V_hat=V_hat,gamma=gamma,j=i,gjD=TRUE)}
+  attr(gjD, "dimnames") <- NULL
+  gjD_est<-data.frame(apply(gjD,1,mean))
+  
+  #Calculate sample covariance:
+  Sigma<-cov(t(gjD))
+  
+  #Estimate bias:
+  CI<-bootstrap_bias(D=D,Q0=Q_hat,V0=V_hat,number_bootstrap=k,alpha=alpha)
+  bn<-apply(gjD_est,1,function(x) min(abs(x-CI[1]),abs(x-CI[2])))
+  
+  #Generate the grid of weights in a simplex:
+  grid<-simplex.sample(n=horizon,N=100)$samples
+  
+
 }
