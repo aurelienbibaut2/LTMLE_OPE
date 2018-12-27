@@ -135,30 +135,43 @@ LTMLE_estimator <-  function(D, Q_hat, V_hat, evaluation_action_matrix){
 
 ##MAGIC
 
-library(nloptr)
-library(hitandrun)
+library(quadprog)
+library(Matrix)
 
-MAGIC_estimator<-function(D,evaluation_action_matrix,Q_hat,V_hat,gamma=1,k=1e3,alpha=0.1){
+bootstrap_bias <- function(D, Q0, V0, number_bootstrap = 1e3, alpha = 0.1) {
+  n <- dim(D)[1]
+  wdr_bootstrap <- c()
+  for (i in 1:number_bootstrap) {
+    index_bootstrap <- sample(x = 1:n, size = n, replace = TRUE)
+    D_bootstrap <- D[index_bootstrap, , ]
+    wdr_once <- WDR_estimator_TB(D = D_bootstrap, Q_hat = Q0, V_hat = V0)
+    wdr_bootstrap <- c(wdr_bootstrap, wdr_once)
+  }
+  wdr_quantiles <- quantile(wdr_bootstrap, probs = c(alpha / 2, 1 - alpha / 2))
+  return(wdr_quantiles)
+}
+
+MAGIC_estimator<-function(D,Q_hat,V_hat,gamma=1,k=1e4,alpha=0.1,N=100){
   
   horizon <- dim(D)[2]
   n <- dim(D)[1]
   
   #g^(j)(D) for until horizon
   #0 is AM-based, horizon IS-based
-  gjD<-foreach(i=0:horizon, .combine = rbind, .inorder=T) %dopar% 
+  gjD<-foreach::foreach(i=0:horizon, .combine = rbind, .inorder=T) %dopar% 
   {WDR_estimator_TB(D=D,Q_hat=Q_hat,V_hat=V_hat,gamma=gamma,j=i,gjD=TRUE)}
   attr(gjD, "dimnames") <- NULL
   gjD_est<-data.frame(apply(gjD,1,mean))
   
   #Calculate sample covariance:
-  Sigma<-cov(t(gjD))
+  Sigma<-cov(t(gjD)) #See variance increase as more IS
   
   #Estimate bias:
   CI<-bootstrap_bias(D=D,Q0=Q_hat,V0=V_hat,number_bootstrap=k,alpha=alpha)
-  bn<-apply(gjD_est,1,function(x) min(abs(x-CI[1]),abs(x-CI[2])))
+  bn<-apply(gjD_est,1,function(x) min(abs(x-CI[1]),abs(x-CI[2])) )
   
-  #Generate the grid of weights in a simplex:
-  grid<-simplex.sample(n=horizon,N=100)$samples
+  res<-quadprog::solve.QP(Dmat=Matrix::nearPD(Sigma + bn %*% t(bn), eig.tol=1e-10)$mat, dvec = rep(0,nrow(gjD_est)), 
+                          Amat = cbind(rep(1,nrow(gjD_est)), diag(nrow(gjD_est))), bvec = c(1,rep(0,nrow(gjD_est))))
   
-
+  as.numeric(t(res$solution) %*% gjD_est[,1])
 }
