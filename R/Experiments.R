@@ -11,7 +11,7 @@ V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
 V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
 # Specify jobs ------------------------------------------------------------
 library(foreach); library(doParallel)
-nb_repeats <- (detectCores() - 1) * 10
+nb_repeats <- (parallel::detectCores() - 1) * 10
 ns <- c(50, 100, 200, 500, 1000, 5000, 10000)
 jobs <- expand.grid(n = ns, repeat.id = 1:nb_repeats)
 
