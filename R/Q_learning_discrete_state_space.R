@@ -30,7 +30,6 @@ bellman_iterations <- function(transitions_dataset, evaluation_action_matrix, ga
   }
   l2_errors <- c()
   
-  
   # Bellman iterations
   for(m in 1:n_iterations){
     # Compute Bellman target
@@ -45,5 +44,5 @@ bellman_iterations <- function(transitions_dataset, evaluation_action_matrix, ga
     # Update Q_hat
     Q_hat <- outer(1:n_states, 1:n_actions, FUN= function(s, a) predict(Q_hat_lm_fit, newdata=data.frame(cbind(s=s, a=a))) )
   }
-  list(Q_hat=Q_hat, l2_errors=l2_errors)
+  list(Q_hat=Q_hat, V_hat=as.vector(V_hat), l2_errors=l2_errors)
 }

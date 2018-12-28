@@ -66,7 +66,7 @@ DR_estimator_TB <- function(D, Q_hat, V_hat){ # Thomas and Brunskill's DR estima
 # Needs to be provided with a Q_hat and a V_hat that have dimension
 # horizon x n_states x n_actions and horizon x n_states, respectively
 # With the function implemented below, g^(j)(D) is just WDR_estimator(D, Q_hat, V_hat, gamma, j)
-WDR_estimator_TB <- function(D, Q_hat, V_hat, gamma=1, j=NULL){ 
+WDR_estimator_TB_old <- function(D, Q_hat, V_hat, gamma=1, j=NULL){ 
   n <- dim(D)[1]
   horizon <- dim(D)[2]
   if(is.null(j)) j <- horizon
@@ -93,23 +93,70 @@ WDR_estimator_TB <- function(D, Q_hat, V_hat, gamma=1, j=NULL){
   mean(V_hat[1, D[, 1, 's']] + apply(D_star, 1, sum))
 }
 
+# This version computes the sequence of g^(j) up till the given j and 
+# also the empirical covariance matrix between the g^(j)'s.
+WDR_estimator_TB <- function(D, Q_hat, V_hat, gamma=1, j=NULL, compute_covariance=F){ 
+  n <- dim(D)[1]
+  horizon <- dim(D)[2]
+  if(is.null(j)) j <- horizon
+  D_star <- matrix(NA, nrow=n, ncol=j)
+  # Compute mean rho_t to be used as denominator in the stabilized weights
+  w_t <- apply(D[, , 'rho_t'], 2, mean)
+  
+  # D_star below is computed slightly differently whether t=horizon or t <= horizon-1
+  # The reason is that V_hat[horizon+1, s] is zero in reality for every s, but the
+  # row V_hat[horizon+1, ] does not exist in the V_hat passed as argument 
+  # (there is no need to have a row for V_hat[horizon+1, ] as we know it's zero.
+  if(j == horizon){
+    t <- j
+    D_star[, t] <- gamma^t * D[, t, 'rho_t'] / w_t[t] * (D[, t, 'r'] + 
+                                                           - apply(D[, t, ], 1, function(x) Q_hat[t, x['s'], x['a']]))
+  }
+  
+  if(j > 0){
+    for(t in (min(horizon-1, j)):1){
+      D_star[, t] <- gamma^t * D[, t, 'rho_t'] / w_t[t] * (D[, t, 'r'] + gamma * V_hat[t+1, D[, t+1, 's']]
+                                                           - apply(D[, t, ], 1, function(x) Q_hat[t, x['s'], x['a']]))
+    }
+  }
+  
+  # g^(j)(D) = 1/n \sum_{i=1}^n (V_hat(S_1^i) \sum_{t=1}^j D^*_{t,i}
+  # Define \xi_{i,j} = V_hat(S_1^i) + \sum_{t=1}^j D^*_{t,i}
+  # Then g^(j)(D) = 1/n \sum_{i=1}^n \xi_{i,j}
+  # Just distinguishing cases j>1, j==1, j==0 due to output format of apply(D_star, 1, cumsum).
+  if(j > 1){
+    xi <- V_hat[1, D[, 1, 's']] + cbind(rep(0, n), t(apply(D_star, 1, cumsum))) # Adding a column of zeros that will give us g^(0)(D).
+  }else if(j == 1){
+    xi <- V_hat[1, D[, 1, 's']] + cbind(rep(0, n), as.matrix(apply(D_star, 1, cumsum)))
+  }else{
+    xi <- as.matrix(V_hat[1, D[, 1, 's']])
+  }
+  xi_bar <- apply(xi, 2, mean)
+  centered_xi <- xi - rep(1, n) %*% t(xi_bar)
+  Omega_n <- NULL
+  if(compute_covariance) Omega_n <- t(centered_xi) %*% centered_xi / n # Putting a switch here as this can be pretty long
+  g_js <- apply(xi, 2, mean)
+  list(g_js=g_js, Omega_n=Omega_n)
+}
+
 # Two helper functions
 # Expit and logit
 expit <- function(x) { 1 / (1 + exp(-x)) } 
 logit <- function(x) { log(x / (1 - x)) }
 
 # LTMLE
-LTMLE_estimator <-  function(D, Q_hat, V_hat, evaluation_action_matrix){
+LTMLE_estimator <-  function(D, Q_hat, V_hat, evaluation_action_matrix, gamma=1){
   # Get dataset dimensions
   n <- dim(D)[1]
   horizon <- dim(D)[2]
   
   epsilons <- c()
+  Delta_t <- 0
   V_evaluated <- rep(0, n) #V_{t+1}(S_{t+1})
   for(t in horizon:1){
-    Delta_t <- horizon + 1 - t
+    Delta_t <- 1 + gamma * Delta_t
     R <- D[, t, 'r'] # R_t
-    U_tilde <- (R + V_evaluated + Delta_t) / (2 * Delta_t) # U_tilde = R_tilde_t + V_tilde_{t+1}(S_t) in the notations of the write-up
+    U_tilde <- (R + gamma * V_evaluated + Delta_t) / (2 * Delta_t) # U_tilde = R_tilde_t + V_tilde_{t+1}(S_t) in the notations of the write-up
     Q_t_evaluated <- apply(D[ , t, ], 1, function(x) Q_hat[t, x['s'], x['a']]) # Q_t(A_t, S_t)
     Q_tilde_t_evaluated <- (Q_t_evaluated + Delta_t) / (2 * Delta_t)
     epsilon <- glm(U_tilde ~ offset(logit(Q_tilde_t_evaluated)) + 1, 
