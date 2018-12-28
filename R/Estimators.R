@@ -144,8 +144,13 @@ WDR_estimator_TB <- function(D, Q_hat, V_hat, gamma=1, j=NULL, compute_covarianc
 expit <- function(x) { 1 / (1 + exp(-x)) } 
 logit <- function(x) { log(x / (1 - x)) }
 
+# Soften weights
+soften <- function(a, alpha){
+  a^alpha / sum(a^alpha) 
+}
+
 # LTMLE
-LTMLE_estimator <-  function(D, Q_hat, V_hat, evaluation_action_matrix, gamma=1){
+LTMLE_estimator <-  function(D, Q_hat, V_hat, evaluation_action_matrix, gamma=1, alpha){
   # Get dataset dimensions
   n <- dim(D)[1]
   horizon <- dim(D)[2]
@@ -156,11 +161,11 @@ LTMLE_estimator <-  function(D, Q_hat, V_hat, evaluation_action_matrix, gamma=1)
   for(t in horizon:1){
     Delta_t <- 1 + gamma * Delta_t
     R <- D[, t, 'r'] # R_t
-    U_tilde <- (R + gamma * V_evaluated + Delta_t) / (2 * Delta_t) # U_tilde = R_tilde_t + V_tilde_{t+1}(S_t) in the notations of the write-up
+    U_tilde <- (R + gamma * V_evaluated + Delta_t) / (2 * Delta_t) # U_tilde = R_tilde_t + gamma*V_tilde_{t+1}(S_t) in the notations of the write-up
     Q_t_evaluated <- apply(D[ , t, ], 1, function(x) Q_hat[t, x['s'], x['a']]) # Q_t(A_t, S_t)
     Q_tilde_t_evaluated <- (Q_t_evaluated + Delta_t) / (2 * Delta_t)
     epsilon <- glm(U_tilde ~ offset(logit(Q_tilde_t_evaluated)) + 1, 
-                   family=quasibinomial, weights = D[,t, 'rho_t'])$coefficients[1]
+                   family=quasibinomial, weights = soften(D[,t, 'rho_t'], alpha) )$coefficients[1]
     epsilons <- c(epsilons, epsilon)
     # Evaluate Q_tilde(s_t, a) for a_t = 1, a_t = 2
     Q_tilde_t_star <- expit(logit((Q_hat[t, ,] + Delta_t) / (2 * Delta_t)) + epsilon) # Q_tilde_t^*

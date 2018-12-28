@@ -5,13 +5,13 @@ source('MDP_modelWin.R')
 source('Estimators.R')
 source('Q_learning_discrete_state_space.R')
 source('Magic_estimator.R')
-
-set.seed(1)
+source('MAGIC-LTMLE_Estimator.R')
+# set.seed(1)
 # Parameters of the environment
 n_states <- 3; n_actions <- 2
 
 # Set DGP parameters
-horizon <- 20; n <- 500; gamma <- 1
+horizon <- 20; n <- 1e3; gamma <- 0.9
 V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
                                   transition_based_rewards,
                                   evaluation_action_matrix, horizon, gamma)
@@ -42,11 +42,14 @@ V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
 #   Q_hat[t, ,] <-  Q_learning_results$Q_hat
 #   V_hat[t, ] <-  Q_learning_results$V_hat
 # }
-Q_hat <- Q0 +  5e-1 * rnorm(1) 
-V_hat <-  V0 +  5e-1 * rnorm(1) 
+b <- 5e-1*rnorm(1)
+# b <- 0
+Q_hat <- Q0 +  b
+V_hat <-  V0 +  b
 
-MAGIC_estimates <- c(); WDR_estimates <- c(); LTMLE_estimates <- c()
-for(i in 1:100){
+MAGIC_estimates <- c();
+WDR_estimates <- c(); LTMLE_estimates <- c(); MAGIC_LTMLE_estimates <- c(); MAGIC_LTMLE_hacky_estimates <- c()
+for(i in 1:10){
   D <- generate_discrete_MDP_dataset(n, 1, state_transition_matrix,
                                      behavior_action_matrix,
                                      transition_based_rewards,
@@ -56,19 +59,25 @@ for(i in 1:100){
   WDR_estimates <- c(WDR_estimates, 
                      WDR_estimator_TB_old(D, Q_hat, V_hat, gamma = gamma, j = horizon))
   LTMLE_estimates <- c(LTMLE_estimates,
-                       LTMLE_estimator(D, Q_hat, V_hat, evaluation_action_matrix, gamma))
+                       LTMLE_estimator(D, Q_hat, V_hat, evaluation_action_matrix, gamma, alpha=0.01))
+  MAGIC_LTMLE_hacky_estimates <- c(MAGIC_LTMLE_hacky_estimates, 
+                                   MAGIC_LTMLE_estimator_hacky(D, Q_hat, V_hat, evaluation_action_matrix, gamma = gamma, n_bootstrap = 100))
+  MAGIC_LTMLE_estimates <- c(MAGIC_LTMLE_estimates, 
+                             MAGIC_LTMLE_estimator(D, Q_hat, V_hat, evaluation_action_matrix, gamma = gamma, n_bootstrap = 20)$estimate)
 }
-
-
 
 cat('WDR MSE:', mean( (WDR_estimates - V0[1,1])^2), '\n')
 cat('MAGIC MSE:', mean( (MAGIC_estimates - V0[1,1])^2), '\n')
 cat('LTMLE MSE:', mean( (LTMLE_estimates - V0[1,1])^2), '\n')
+cat('MAGIC LTMLE hacky MSE:', mean( (MAGIC_LTMLE_hacky_estimates - V0[1,1])^2), '\n')
+cat('MAGIC LTMLE MSE:', mean( (MAGIC_LTMLE_estimates - V0[1,1])^2), '\n')
 cat('\n')
 cat('WDR bias', mean(WDR_estimates - V0[1,1]), '\n')
 cat('MAGIC bias',  mean(MAGIC_estimates - V0[1,1]), '\n')
 cat('LTMLE bias:', mean(LTMLE_estimates - V0[1,1]), '\n')
+cat('MAGIC LTMLE bias:', mean(MAGIC_LTMLE_estimates - V0[1,1]), '\n')
 cat('\n')
 cat('WDR variance', var(WDR_estimates), '\n')
 cat('MAGIC variance',  var(MAGIC_estimates), '\n')
 cat('LTMLE variance:', var(LTMLE_estimates), '\n')
+cat('MAGIC LTMLE variance:', var(MAGIC_LTMLE_estimates), '\n')
