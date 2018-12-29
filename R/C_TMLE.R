@@ -29,7 +29,7 @@ evaluate_EIC <- function(D, epsilons, Q_hat, V_hat, evaluation_action_matrix, ga
     V_t_star <- 2 * Delta_t * (V_tilde_t_star - 1/2)
     # Compute component t of the EIC
     # Note that at this point we haven't updated V_t_evaluated yet, so it is still V_{t+1}(S_{t+1})
-    D_star[, t] <- gamma^t * D[, t, 'rho_t'] * (D[, t, 'r'] + gamma * V_t_evaluated
+    D_star[, t] <- gamma^t * soften(D[, t, 'rho_t'], 0.3) * (D[, t, 'r'] + gamma * V_t_evaluated
                                                 - apply(D[, t, ], 1, function(x) Q_t_star[x['s'], x['a']]))
     # Evaluate V
     V_t_evaluated <-  V_t_star[D[, t, 's']]
