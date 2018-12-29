@@ -111,20 +111,20 @@ MAGIC_LTMLE_estimator <- function(D, Q_hat, V_hat, evaluation_action_matrix, gam
 }
 
 # Debugging experiments ---------------------------------------------------
-horizon <- 20; n <- 100; gamma <- 0.9
-V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
-                                  transition_based_rewards,
-                                  evaluation_action_matrix, horizon, gamma = gamma)
-V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
-
-b <- 1e-1*rnorm(1)
-Q_hat <- Q0 +  b
-V_hat <-  V0 +  b
-
-D <- generate_discrete_MDP_dataset(n, 1, state_transition_matrix,
-                                   behavior_action_matrix,
-                                   transition_based_rewards,
-                                   horizon)
-
-MAGIC_LTMLE_estimator_hacky(D, Q_hat, V_hat, evaluation_action_matrix, gamma = gamma, n_bootstrap = 100)
-MAGIC_LTMLE_estimator(D, Q_hat, V_hat, evaluation_action_matrix, gamma = gamma, n_bootstrap = 20)$estimate
+# horizon <- 20; n <- 100; gamma <- 0.9
+# V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
+#                                   transition_based_rewards,
+#                                   evaluation_action_matrix, horizon, gamma = gamma)
+# V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
+# 
+# b <- 1e-1*rnorm(1)
+# Q_hat <- Q0 +  b
+# V_hat <-  V0 +  b
+# 
+# D <- generate_discrete_MDP_dataset(n, 1, state_transition_matrix,
+#                                    behavior_action_matrix,
+#                                    transition_based_rewards,
+#                                    horizon)
+# 
+# MAGIC_LTMLE_estimator_hacky(D, Q_hat, V_hat, evaluation_action_matrix, gamma = gamma, n_bootstrap = 100)
+# MAGIC_LTMLE_estimator(D, Q_hat, V_hat, evaluation_action_matrix, gamma = gamma, n_bootstrap = 20)$estimate

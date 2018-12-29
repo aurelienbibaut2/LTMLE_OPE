@@ -179,4 +179,5 @@ LTMLE_estimator <-  function(D, Q_hat, V_hat, evaluation_action_matrix, gamma=1,
   }
   # The average of the last V is the LTML estimator of the value
   V_hat_LTMLE <- mean(V_evaluated)
+  list(estimate=V_hat_LTMLE, epsilons=epsilons)
 }
