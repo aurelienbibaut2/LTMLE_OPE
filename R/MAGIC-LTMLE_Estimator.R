@@ -10,6 +10,13 @@ soften <- function(a, alpha){
   a^alpha / sum(a^alpha) 
 }
 
+# Bound estimates for logit
+bound <- function(g) {
+  g[g < 0.01] <- 0.01
+  g[g > 0.99] <- 0.99
+  return(g)
+  }
+
 # LTMLE
 partial_LTMLE <-  function(D, Q_hat, V_hat, evaluation_action_matrix, gamma, alpha, j){
   # Get dataset dimensions
@@ -34,12 +41,12 @@ partial_LTMLE <-  function(D, Q_hat, V_hat, evaluation_action_matrix, gamma, alp
     R <- D[, t, 'r'] # R_t
     U_tilde <- (R + gamma * V_evaluated + Delta_t) / (2 * Delta_t) # U_tilde = R_tilde_t + gamma*V_tilde_{t+1}(S_t) in the notations of the write-up
     Q_t_evaluated <- apply(D[ , t, ], 1, function(x) Q_hat[t, x['s'], x['a']]) # Q_t(A_t, S_t)
-    Q_tilde_t_evaluated <- (Q_t_evaluated + Delta_t) / (2 * Delta_t)
+    Q_tilde_t_evaluated <- bound((Q_t_evaluated + Delta_t) / (2 * Delta_t))
     epsilon <- glm(U_tilde ~ offset(logit(Q_tilde_t_evaluated)) + 1, 
                    family=quasibinomial, weights = soften(D[,t, 'rho_t'], alpha) )$coefficients[1]
     epsilons <- c(epsilons, epsilon)
     # Evaluate Q_tilde(s_t, a) for a_t = 1, a_t = 2
-    Q_tilde_t_star <- expit(logit( (Q_hat[t, ,] + Delta_t) / (2 * Delta_t) ) + epsilon) # Q_tilde_t^*
+    Q_tilde_t_star <- expit(logit( bound((Q_hat[t, ,] + Delta_t) / (2 * Delta_t)) ) + epsilon) # Q_tilde_t^*
     
     # Then set V_tilde(s_t) = \sum_{a} Q_tilde(s_t, a) pi_a(a|s_t)
     V_tilde <- apply(Q_tilde_t_star * evaluation_action_matrix, 1, sum)
@@ -99,7 +106,7 @@ MAGIC_LTMLE_estimator <- function(D, Q_hat, V_hat, evaluation_action_matrix, gam
   
   # Solving x^\top D x under the constraint that A^\top x >= b0. 
   # First row of A is actually an equality constraint. This is specified by setting meq=1 in solve.QP
-  Dmat <- Omega_n + b_n %*% t(b_n)
+  Dmat <- Matrix::nearPD(Omega_n + b_n %*% t(b_n), eig.tol=1e-10)$mat
   Amat <- t(rbind(rep(1, horizon), diag(horizon)))
   dvec <- rep(0, horizon)
   b0 <- c(1, rep(0, horizon))

@@ -1,6 +1,7 @@
 library(MASS)
 library(quadprog)
 library(boot)
+library(Matrix)
 source('MDP_modelWin.R')
 source('Estimators.R')
 
@@ -48,7 +49,8 @@ MAGIC_estimator <- function(D, Q_hat, V_hat, gamma, horizon, n_bootstrap=1000){
   
   # Solving x^\top D x under the constraint that A^\top x >= b0. 
   # First row of A is actually an equality constraint. This is specified by setting meq=1 in solve.QP
-  Dmat <- WDR_results$Omega_n[2:(horizon+1), 2:(horizon+1)] + b_n[2:(horizon+1)] %*% t(b_n[2:(horizon+1)])
+  Dmat <- Matrix::nearPD(WDR_results$Omega_n[2:(horizon+1), 2:(horizon+1)] + 
+                           b_n[2:(horizon+1)] %*% t(b_n[2:(horizon+1)]), eig.tol=1e-10)$mat
   Amat <- t(rbind(rep(1, horizon), diag(horizon)))
   dvec <- rep(0, horizon)
   b0 <- c(1, rep(0, horizon))
