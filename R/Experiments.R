@@ -6,20 +6,49 @@ source('MDP_modelWin.R')
 source('Estimators.R')
 source('C_TMLE.R')
 source('Magic_estimator.R')
+source('Q_learning_discrete_state_space.R')
 
 # Simulations -------------------------------------------------------------
-horizon <- 20; gamma <- 0.9
+horizon <- 50; gamma <- 0.9; n_states <- 3; n_actions <- 2
 V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
                                   transition_based_rewards,
                                   evaluation_action_matrix, horizon, gamma = gamma)
 V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
+
+
 # Specify jobs ------------------------------------------------------------
 library(foreach); library(doParallel)
-nb_repeats <- (parallel::detectCores() - 1) * 1
+nb_repeats <- (parallel::detectCores() - 1) * 2
 # ns <- c(50, 100, 200, 500, 1000, 5000, 10000)
-ns <- c(500, 1000, 2000)
+ns <- c(50, 100, 500)
 jobs <- expand.grid(n = ns, repeat.id = 1:nb_repeats)
 
+
+# Q-learning of the initial estimator -------------------------------------
+# Generate data
+Q_hats <- list(); V_hats <- list()
+for(n in ns){
+  D <- generate_discrete_MDP_dataset(n, 1, state_transition_matrix,
+                                     behavior_action_matrix,
+                                     transition_based_rewards,
+                                     horizon)
+  # Fit Q_function
+  cat('Start Bellman iterations\n')
+  transitions_dataset <- make_transitions_dataset(D)
+  Q_learning_results <- bellman_iterations(transitions_dataset, evaluation_action_matrix,
+                                           gamma=gamma, max_it=100, relative_tol=1e-4, V0=V0[1, ],
+                                           verbose=T, start_new_plot = (n==ns[1]) )
+  cat('Done with Bellman iterations\n')
+  # Replicate accross time points the Bellman iterations based Q-function
+  # That would be correct under infinite horizon.
+  # Here's it's only approximately correct. Better for early time points than late time points.
+  Q_hat <- array(0, dim=c(horizon, n_states, n_actions)); V_hat <- array(0, dim=c(horizon, n_states))
+  for(t in 1:horizon){
+    Q_hat[t, ,] <-  Q_learning_results$Q_hat
+    V_hat[t, ] <-  Q_learning_results$V_hat
+  }
+  Q_hats[[as.character(n)]] <- Q_hat; V_hats[[as.character(n)]] <- V_hat
+}
 
 cat(detectCores(), 'cores detected\n')
 cl <- makeCluster(getOption("cl.cores", detectCores()-1), outfile = '')
@@ -27,14 +56,16 @@ registerDoParallel(cl)
 
 results <- foreach(i=1:nrow(jobs), .combine = rbind,
                    .packages = c('boot', 'quadprog'),
-                   #.export = c('TMLE_EY1_speedglm', 'CV_AIPTW_EY1', 'expit', 'logit', 'g_to_g_delta'),
                    .verbose = T, .inorder = T) %dopar% {
                      D <- generate_discrete_MDP_dataset(jobs[i, ]$n, 1, state_transition_matrix,
                                                         behavior_action_matrix,
                                                         transition_based_rewards,
                                                         horizon)
-                     b <- 1e-1 * rnorm(1)
-                     Q_hat <- Q0 + b; V_hat <- V0 + b
+                     #b <- 1e-1 * rnorm(1)
+                     #Q_hat <- Q0 + b; V_hat <- V0 + b
+                     Q_hat <- Q_hats[[as.chacter(jobs[i, ]$n)]]
+                     V_hat <- V_hats[[as.chacter(jobs[i, ]$n)]]
+                     
                      rbind(
                        #c(n=jobs[i, ]$n, estimator='IS', estimate=IS_estimator(D)),
                            # c(n=jobs[i, ]$n, estimator='WIS', estimate=WIS_estimator(D)),
@@ -46,7 +77,9 @@ results <- foreach(i=1:nrow(jobs), .combine = rbind,
                                                                                         gamma = gamma, j = horizon)$g_js[horizon+1])),
                            c(n=jobs[i, ]$n, estimator='MAGIC', estimate=try(MAGIC_estimator(D, Q_hat, V_hat, gamma = gamma, 
                                                                                          horizon = horizon, n_bootstrap = 100)$estimate)),
-                           c(n=jobs[i, ]$n, estimator='TMLE', estimate=try(LTMLE_estimator(D, Q_hat, V_hat, 
+                           c(n=jobs[i, ]$n, estimator='LTMLE', estimate=try(LTMLE_estimator(D, Q_hat, V_hat, 
+                                                                                               evaluation_action_matrix, gamma, alpha=1)$estimate)),
+                           c(n=jobs[i, ]$n, estimator='LTMLE_0.1', estimate=try(LTMLE_estimator(D, Q_hat, V_hat, 
                                                                                        evaluation_action_matrix, gamma, alpha=0.1)$estimate)),
                            c(n=jobs[i, ]$n, estimator='C-TMLE', estimate=try(C_LTMLE_softening(D, Q_hat, V_hat, 
                                                                                            evaluation_action_matrix, gamma)$estimate))
