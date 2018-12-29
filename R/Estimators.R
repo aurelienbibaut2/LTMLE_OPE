@@ -62,41 +62,6 @@ DR_estimator_TB <- function(D, Q_hat, V_hat){ # Thomas and Brunskill's DR estima
   mean(V_hat[t, D[, 1, 's']] + apply(D_star, 1, sum))
 }
 
-# Thomas and Brunskill's Weighted DR estimator
-# Needs to be provided with a Q_hat and a V_hat that have dimension
-# horizon x n_states x n_actions and horizon x n_states, respectively
-# With the function implemented below, g^(j)(D) is just WDR_estimator(D, Q_hat, V_hat, gamma, j)
-WDR_estimator_TB <- function(D, Q_hat, V_hat, gamma=1, j=NULL, gjD=FALSE){ 
-  n <- dim(D)[1]
-  horizon <- dim(D)[2]
-  if(is.null(j)) j <- horizon
-  D_star <- matrix(NA, nrow=n, ncol=j)
-  # Compute mean rho_t to be used as denominator in the stabilized weights
-  w_t <- apply(D[, , 'rho_t'], 2, mean)
-  
-  # D_star below is computed slightly differently whether t=horizon or t <= horizon-1
-  # The reason is that V_hat[horizon+1, s] is zero in reality for every s, but the
-  # row V_hat[horizon+1, ] does not exist in the V_hat passed as argument 
-  # (there is no need to have a row for V_hat[horizon+1, ] as we know it's zero.
-  if(j == horizon){
-    t <- j
-    D_star[, t] <- gamma^t * D[, t, 'rho_t'] / w_t[t] * (D[, t, 'r'] + 
-                                                           - apply(D[, t, ], 1, function(x) Q_hat[t, x['s'], x['a']]))
-  }
-  
-  if(j > 0){
-    for(t in (min(horizon-1, j)):1){
-      D_star[, t] <- gamma^t * D[, t, 'rho_t'] / w_t[t] * (D[, t, 'r'] + gamma * V_hat[t+1, D[, t+1, 's']]
-                                                           - apply(D[, t, ], 1, function(x) Q_hat[t, x['s'], x['a']]))
-    }
-  }
-  if(gjD){
-    return(V_hat[1, D[, 1, 's']] + apply(D_star, 1, sum))
-  }else{
-    mean(V_hat[1, D[, 1, 's']] + apply(D_star, 1, sum))
-  }
-}
-
 # Two helper functions
 # Expit and logit
 expit <- function(x) { 1 / (1 + exp(-x)) } 
@@ -133,7 +98,7 @@ LTMLE_estimator <-  function(D, Q_hat, V_hat, evaluation_action_matrix){
   V_hat_LTMLE <- mean(V_evaluated)
 }
 
-##MAGIC
+##MAGIC, v1
 
 library(quadprog)
 library(Matrix)
@@ -151,15 +116,50 @@ bootstrap_bias <- function(D, Q0, V0, number_bootstrap = 1e3, alpha = 0.1) {
   return(wdr_quantiles)
 }
 
-MAGIC_estimator<-function(D,Q_hat,V_hat,gamma=1,k=1e4,alpha=0.1){
+MAGIC_estimator_v1<-function(D,Q_hat,V_hat,gamma=1,k=1e4,alpha=0.1){
   
   horizon <- dim(D)[2]
   n <- dim(D)[1]
   
+  # Thomas and Brunskill's Weighted DR estimator
+  # Needs to be provided with a Q_hat and a V_hat that have dimension
+  # horizon x n_states x n_actions and horizon x n_states, respectively
+  # With the function implemented below, g^(j)(D) is just WDR_estimator(D, Q_hat, V_hat, gamma, j)
+  WDR_estimator_TB_v0 <- function(D, Q_hat, V_hat, gamma=1, j=NULL, gjD=FALSE){ 
+    n <- dim(D)[1]
+    horizon <- dim(D)[2]
+    if(is.null(j)) j <- horizon
+    D_star <- matrix(NA, nrow=n, ncol=j)
+    # Compute mean rho_t to be used as denominator in the stabilized weights
+    w_t <- apply(D[, , 'rho_t'], 2, mean)
+    
+    # D_star below is computed slightly differently whether t=horizon or t <= horizon-1
+    # The reason is that V_hat[horizon+1, s] is zero in reality for every s, but the
+    # row V_hat[horizon+1, ] does not exist in the V_hat passed as argument 
+    # (there is no need to have a row for V_hat[horizon+1, ] as we know it's zero.
+    if(j == horizon){
+      t <- j
+      D_star[, t] <- gamma^t * D[, t, 'rho_t'] / w_t[t] * (D[, t, 'r'] + 
+                                                             - apply(D[, t, ], 1, function(x) Q_hat[t, x['s'], x['a']]))
+    }
+    
+    if(j > 0){
+      for(t in (min(horizon-1, j)):1){
+        D_star[, t] <- gamma^t * D[, t, 'rho_t'] / w_t[t] * (D[, t, 'r'] + gamma * V_hat[t+1, D[, t+1, 's']]
+                                                             - apply(D[, t, ], 1, function(x) Q_hat[t, x['s'], x['a']]))
+      }
+    }
+    if(gjD){
+      return(V_hat[1, D[, 1, 's']] + apply(D_star, 1, sum))
+    }else{
+      mean(V_hat[1, D[, 1, 's']] + apply(D_star, 1, sum))
+    }
+  }
+  
   #g^(j)(D) for until horizon
   #0 is AM-based, horizon IS-based
   gjD<-foreach::foreach(i=0:horizon, .combine = rbind, .inorder=T) %dopar% 
-  {WDR_estimator_TB(D=D,Q_hat=Q_hat,V_hat=V_hat,gamma=gamma,j=i,gjD=TRUE)}
+  {WDR_estimator_TB_v0(D=D,Q_hat=Q_hat,V_hat=V_hat,gamma=gamma,j=i,gjD=TRUE)}
   attr(gjD, "dimnames") <- NULL
   gjD_est<-data.frame(apply(gjD,1,mean))
   
