@@ -41,6 +41,7 @@ evaluate_EIC <- function(D, epsilons, Q_hat, V_hat, evaluation_action_matrix, ga
 C_LTMLE_softening <- function(D, Q_hat, V_hat, evaluation_action_matrix, gamma, V=3){
   # Split the dataset. Compute sequence of epsilons for each softening coeff. Pick the one that minimizes a cross-validated risk
   # D_split1 <- D[1:floor(0.5 * n), ,]; D_split2 <- D[(floor(0.5 * n) + 1):n, ,]
+  n <- dim(D)[1]
   softening_coeffs <- 10^seq(from=-1, to=0, length.out = 10)
   CV_doubly_roubust_risks <- rep(0, length(softening_coeffs))
   epsilons_log <- c()
