@@ -14,7 +14,7 @@ logit <- Vectorize(function(x) {
 })
 
 # Evaluate EIC, potentially on a split that is not the one one which epsilons have been fitted
-evaluate_EIC <- function(D, epsilons, Q_hat, V_hat, evaluation_action_matrix, gamma){
+evaluate_EIC <- function(D, epsilons, Q_hat, V_hat, evaluation_action_matrix, gamma, loss_softening_coeff=1){
   n <- dim(D)[1]; horizon <- dim(D)[2]
   D_star <- matrix(0, nrow=n, ncol=horizon)
   V_t_evaluated <- rep(0, n)
@@ -29,7 +29,7 @@ evaluate_EIC <- function(D, epsilons, Q_hat, V_hat, evaluation_action_matrix, ga
     V_t_star <- 2 * Delta_t * (V_tilde_t_star - 1/2)
     # Compute component t of the EIC
     # Note that at this point we haven't updated V_t_evaluated yet, so it is still V_{t+1}(S_{t+1})
-    D_star[, t] <- gamma^t * soften(D[, t, 'rho_t'], 0.3) * (D[, t, 'r'] + gamma * V_t_evaluated
+    D_star[, t] <- gamma^t * soften(D[, t, 'rho_t'], loss_softening_coeff) * (D[, t, 'r'] + gamma * V_t_evaluated
                                                 - apply(D[, t, ], 1, function(x) Q_t_star[x['s'], x['a']]))
     # Evaluate V
     V_t_evaluated <-  V_t_star[D[, t, 's']]
@@ -38,7 +38,7 @@ evaluate_EIC <- function(D, epsilons, Q_hat, V_hat, evaluation_action_matrix, ga
 }
 
 # Collaborative TMLE that uses a sequence of decreasingly softened weights
-C_LTMLE_softening <- function(D, Q_hat, V_hat, evaluation_action_matrix, gamma, V=3){
+C_LTMLE_softening <- function(D, Q_hat, V_hat, evaluation_action_matrix, gamma, V=3, plot_risk=F){
   # Split the dataset. Compute sequence of epsilons for each softening coeff. Pick the one that minimizes a cross-validated risk
   # D_split1 <- D[1:floor(0.5 * n), ,]; D_split2 <- D[(floor(0.5 * n) + 1):n, ,]
   n <- dim(D)[1]
@@ -54,8 +54,10 @@ C_LTMLE_softening <- function(D, Q_hat, V_hat, evaluation_action_matrix, gamma, 
                                      )
     }
   }
-  # plot(softening_coeffs, CV_doubly_roubust_risks)
-  # print(CV_doubly_roubust_risks)
+  if(plot_risk){
+    plot(softening_coeffs, CV_doubly_roubust_risks)
+    print(CV_doubly_roubust_risks)
+  }
   # Output the estimate computed on the full dataset that uses the softening coeff that minimizes the CV risk
   list(estimate=LTMLE_estimator(D, Q_hat, V_hat, evaluation_action_matrix, gamma, 
                   alpha=softening_coeffs[which.min(CV_doubly_roubust_risks)]
@@ -65,17 +67,17 @@ C_LTMLE_softening <- function(D, Q_hat, V_hat, evaluation_action_matrix, gamma, 
 
 # Debugging experiments ---------------------------------------------------
 # Set DGP parameters
-# horizon <- 20; n <- 1e2; gamma <- 0.9
-# V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
-#                                   transition_based_rewards,
-#                                   evaluation_action_matrix, horizon, gamma)
-# V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
-# b <- 0.1e-1*rnorm(1)
-# Q_hat <- Q0 +  b
-# V_hat <-  V0 +  b
-# D <- generate_discrete_MDP_dataset(n, 1, state_transition_matrix,
-#                                    behavior_action_matrix,
-#                                    transition_based_rewards,
-#                                    horizon)
-# # debug(C_LTMLE_softening)
-# print(C_LTMLE_softening(D, Q_hat, V_hat, evaluation_action_matrix, gamma, V=3))
+horizon <- 20; n <- 1e3; gamma <- 0.9
+V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
+                                  transition_based_rewards,
+                                  evaluation_action_matrix, horizon, gamma)
+V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
+b <- 0.1e-1*rnorm(1)
+Q_hat <- Q0 +  b
+V_hat <-  V0 +  b
+D <- generate_discrete_MDP_dataset(n, 1, state_transition_matrix,
+                                   behavior_action_matrix,
+                                   transition_based_rewards,
+                                   horizon)
+# debug(C_LTMLE_softening)
+print(C_LTMLE_softening(D, Q_hat, V_hat, evaluation_action_matrix, gamma, V=3))

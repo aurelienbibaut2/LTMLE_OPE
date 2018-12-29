@@ -38,6 +38,12 @@ bootstrap_WDR <- function(D, Q_hat, V_hat, gamma, n_bootstrap=1000, alpha=0.1){
 
 # The MAGIC estimator from Thomas and Brunskill 2016
 MAGIC_estimator <- function(D, Q_hat, V_hat, gamma, horizon, n_bootstrap=1000){
+  # J: set of indices j
+  if(horizon >= 10){
+    J <- (floor(seq(1, horizon, length.out=10))) + 1
+  }else{
+    J <- (1:horizon) + 1
+  }
   # Get g^(j)s
   WDR_results <- WDR_estimator_TB(D, Q_hat=Q_hat, V_hat=V_hat, gamma=gamma, j=horizon, compute_covariance=T)
   g_js <- WDR_results$g_js
@@ -48,13 +54,13 @@ MAGIC_estimator <- function(D, Q_hat, V_hat, gamma, horizon, n_bootstrap=1000){
   
   # Solving x^\top D x under the constraint that A^\top x >= b0. 
   # First row of A is actually an equality constraint. This is specified by setting meq=1 in solve.QP
-  Dmat <- WDR_results$Omega_n[2:(horizon+1), 2:(horizon+1)] + b_n[2:(horizon+1)] %*% t(b_n[2:(horizon+1)])
-  Amat <- t(rbind(rep(1, horizon), diag(horizon)))
-  dvec <- rep(0, horizon)
-  b0 <- c(1, rep(0, horizon))
+  Dmat <- WDR_results$Omega_n[J, J] + b_n[J] %*% t(b_n[J])
+  Amat <- t(rbind(rep(1, length(J)), diag(length(J))))
+  dvec <- rep(0, length(J))
+  b0 <- c(1, rep(0, length(J)))
   x_star <- solve.QP(Dmat=Dmat, dvec=dvec, Amat=Amat, bvec=b0, meq=1)$solution
   
   # Compute the MAGIC estimate as the weighted sum of the g^(j)'s, that is x_star^\top b_n[2:horizon]
-  estimate <- t(x_star) %*% g_js[2:(horizon+1)]
+  estimate <- t(x_star) %*% g_js[J]
   list(estimate=estimate, x_star=x_star, g_js=g_js, b_n=b_n, Omega_n=WDR_results$Omega_n, bootstrap_CI=bootstrap_CI)
 }

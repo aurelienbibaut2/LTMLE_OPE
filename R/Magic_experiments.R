@@ -12,7 +12,7 @@ source('C_TMLE.R')
 n_states <- 3; n_actions <- 2
 
 # Set DGP parameters
-horizon <- 20; n <- 1e3; gamma <- 0.9
+horizon <- 20; n <- 1e2; gamma <- 0.9
 V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
                                   transition_based_rewards,
                                   evaluation_action_matrix, horizon, gamma)
@@ -61,9 +61,9 @@ for(i in 1:50){
   WDR_estimates <- c(WDR_estimates, 
                      WDR_estimator_TB_old(D, Q_hat, V_hat, gamma = gamma, j = horizon))
   LTMLE_estimates <- c(LTMLE_estimates,
-                       LTMLE_estimator(D, Q_hat, V_hat, evaluation_action_matrix, gamma, alpha=1)$estimate)
+                       LTMLE_estimator(D, Q_hat, V_hat, evaluation_action_matrix, gamma, alpha=0.1)$estimate)
   C_TMLE_estimates <- c(C_TMLE_estimates,
-                        C_LTMLE_softening(D, Q_hat, V_hat, evaluation_action_matrix, gamma)$estimate)
+                        C_LTMLE_softening(D, Q_hat, V_hat, evaluation_action_matrix, gamma, plot_risks=F)$estimate)
   # MAGIC_LTMLE_hacky_estimates <- c(MAGIC_LTMLE_hacky_estimates, 
                                    # MAGIC_LTMLE_estimator_hacky(D, Q_hat, V_hat, evaluation_action_matrix, gamma = gamma, n_bootstrap = 100))
   # MAGIC_LTMLE_estimates <- c(MAGIC_LTMLE_estimates, 
