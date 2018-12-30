@@ -184,7 +184,7 @@ LTMLE_estimator <-  function(D, Q_hat, V_hat, evaluation_action_matrix, gamma=1,
                    family=quasibinomial, weights = soften(D[,t, 'rho_t'], alpha) )$coefficients[1]
     epsilons <- c(epsilons, epsilon)
     # Evaluate Q_tilde(s_t, a) for a_t = 1, a_t = 2
-    Q_tilde_t_star <- expit( logit( (Q_hat[t, ,] + Delta_t) / (2 * Delta_t)  )
+    Q_tilde_t_star <- expit( logit( (Q_hat[t, , ] + Delta_t) / (2 * Delta_t)  )
                              + epsilon) # Q_tilde_t^*
     # Then set V_tilde(s_t) = \sum_{a} Q_tilde(s_t, a) pi_a(a|s_t)
     V_tilde <- apply(Q_tilde_t_star * evaluation_action_matrix, 1, sum)
