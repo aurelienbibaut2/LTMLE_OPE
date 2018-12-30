@@ -1,9 +1,10 @@
 source('Estimators.R')
 
 # Two helper functions
+# Two helper functions
 # Expit and logit
 expit <- function(x) { 1 / (1 + exp(-x)) } 
-logit <- Vectorize(function(x) { 
+logit_scalar <- Vectorize(function(x) { 
   if(x > 0 & x < 1){
     return(log(x / (1 - x)))
   }else if(x <= 0){
@@ -12,6 +13,13 @@ logit <- Vectorize(function(x) {
     return(Inf)
   }
 })
+logit <- function(x){
+  if(is.null(dim(x))){
+    return(logit_scalar(x))
+  }else{
+    return(array(logit_scalar(x), dim=dim(x)))
+  }
+}
 
 # Evaluate EIC, potentially on a split that is not the one one which epsilons have been fitted
 evaluate_EIC <- function(D, epsilons, Q_hat, V_hat, evaluation_action_matrix, gamma, loss_softening_coeff=1){
@@ -22,7 +30,7 @@ evaluate_EIC <- function(D, epsilons, Q_hat, V_hat, evaluation_action_matrix, ga
   for(t in horizon:1){
     Delta_t <- 1 + gamma * Delta_t
     # Compute the fluctuated estimator \hat{Q}^*_t from \hat{Q}_t and epsilon_t
-    Q_tilde_t_star <- expit( array(logit( (Q_hat[t, ,] + Delta_t) / (2 * Delta_t) ), dim=dim(Q_hat[t, ,]) ) 
+    Q_tilde_t_star <- expit( logit( (Q_hat[t, ,] + Delta_t) / (2 * Delta_t) )
                              + epsilons[t])
     V_tilde_t_star <- as.vector(apply(Q_tilde_t_star * evaluation_action_matrix, 1, sum))
     Q_t_star <- 2 * Delta_t * (Q_tilde_t_star - 1/2)

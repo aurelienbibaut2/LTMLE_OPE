@@ -18,7 +18,7 @@ V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
 
 # Specify jobs ------------------------------------------------------------
 library(foreach); library(doParallel)
-nb_repeats <- (parallel::detectCores() - 1) * 2
+nb_repeats <- (parallel::detectCores() - 1) * 5
 # ns <- c(50, 100, 200, 500, 1000, 5000, 10000)
 ns <- c(50, 100, 500)
 jobs <- expand.grid(n = ns, repeat.id = 1:nb_repeats)
@@ -50,6 +50,8 @@ for(n in ns){
   Q_hats[[as.character(n)]] <- Q_hat; V_hats[[as.character(n)]] <- V_hat
 }
 
+
+# Monte Carlo simulation --------------------------------------------------
 cat(detectCores(), 'cores detected\n')
 cl <- makeCluster(getOption("cl.cores", detectCores()-1), outfile = '')
 registerDoParallel(cl)
@@ -61,10 +63,10 @@ results <- foreach(i=1:nrow(jobs), .combine = rbind,
                                                         behavior_action_matrix,
                                                         transition_based_rewards,
                                                         horizon)
-                     #b <- 1e-1 * rnorm(1)
-                     #Q_hat <- Q0 + b; V_hat <- V0 + b
-                     Q_hat <- Q_hats[[as.chacter(jobs[i, ]$n)]]
-                     V_hat <- V_hats[[as.chacter(jobs[i, ]$n)]]
+                     b <- 1e-1 * rnorm(1)
+                     Q_hat <- Q0 + b; V_hat <- V0 + b
+                     # Q_hat <- Q_hats[[as.character(jobs[i, ]$n)]]
+                     # V_hat <- V_hats[[as.character(jobs[i, ]$n)]]
                      
                      rbind(
                        #c(n=jobs[i, ]$n, estimator='IS', estimate=IS_estimator(D)),
@@ -75,14 +77,17 @@ results <- foreach(i=1:nrow(jobs), .combine = rbind,
                            # c(n=jobs[i, ]$n, estimator='DR_TB',  estimate=DR_estimator_TB(D, Q_hat=Q0, V_hat=V0)),
                            c(n=jobs[i, ]$n, estimator='WDR', estimate=try(WDR_estimator_TB(D, Q_hat=Q_hat, V_hat=V_hat,
                                                                                         gamma = gamma, j = horizon)$g_js[horizon+1])),
-                           c(n=jobs[i, ]$n, estimator='MAGIC', estimate=try(MAGIC_estimator(D, Q_hat, V_hat, gamma = gamma, 
-                                                                                         horizon = horizon, n_bootstrap = 100)$estimate)),
+                           c(n=jobs[i, ]$n, estimator='MAGIC', estimate=MAGIC_estimator(D, Q_hat, V_hat, gamma = gamma,
+                                                                                        horizon = horizon, n_bootstrap = 100,
+                                                                                        force_PD = T)$estimate),
                            c(n=jobs[i, ]$n, estimator='LTMLE', estimate=try(LTMLE_estimator(D, Q_hat, V_hat, 
                                                                                                evaluation_action_matrix, gamma, alpha=1)$estimate)),
+                           c(n=jobs[i, ]$n, estimator='LTMLE_0.7', estimate=try(LTMLE_estimator(D, Q_hat, V_hat, 
+                                                                                                evaluation_action_matrix, gamma, alpha=0.7)$estimate)),
                            c(n=jobs[i, ]$n, estimator='LTMLE_0.1', estimate=try(LTMLE_estimator(D, Q_hat, V_hat, 
                                                                                        evaluation_action_matrix, gamma, alpha=0.1)$estimate)),
-                           c(n=jobs[i, ]$n, estimator='C-TMLE', estimate=try(C_LTMLE_softening(D, Q_hat, V_hat, 
-                                                                                           evaluation_action_matrix, gamma)$estimate))
+                           c(n=jobs[i, ]$n, estimator='C-TMLE', estimate=C_LTMLE_softening(D, Q_hat, V_hat, 
+                                                                                           evaluation_action_matrix, gamma)$estimate)
                      )
                    }
 stopCluster(cl)

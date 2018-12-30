@@ -37,7 +37,7 @@ bootstrap_WDR <- function(D, Q_hat, V_hat, gamma, n_bootstrap=1000, alpha=0.1){
 }
 
 # The MAGIC estimator from Thomas and Brunskill 2016
-MAGIC_estimator <- function(D, Q_hat, V_hat, gamma, horizon, n_bootstrap=1000){
+MAGIC_estimator <- function(D, Q_hat, V_hat, gamma, horizon, n_bootstrap=1000, force_PD=T){
   # J: set of indices j
   if(horizon >= 10){
     J <- (floor(seq(1, horizon, length.out=10))) + 1
@@ -55,6 +55,8 @@ MAGIC_estimator <- function(D, Q_hat, V_hat, gamma, horizon, n_bootstrap=1000){
   # Solving x^\top D x under the constraint that A^\top x >= b0. 
   # First row of A is actually an equality constraint. This is specified by setting meq=1 in solve.QP
   Dmat <- WDR_results$Omega_n[J, J] + b_n[J] %*% t(b_n[J])
+  if(force_PD)
+    Dmat <- Matrix::nearPD(Dmat, eig.tol=1e-10)$mat
   Amat <- t(rbind(rep(1, length(J)), diag(length(J))))
   dvec <- rep(0, length(J))
   b0 <- c(1, rep(0, length(J)))
