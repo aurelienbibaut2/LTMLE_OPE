@@ -7,6 +7,7 @@ source('Q_learning_discrete_state_space.R')
 source('Magic_estimator.R')
 source('MAGIC-LTMLE_Estimator.R')
 source('C_TMLE.R')
+source('penalized_LTMLE.R')
 # set.seed(1)
 # Parameters of the environment
 n_states <- 3; n_actions <- 2
@@ -51,7 +52,7 @@ V_hat <-  V0 +  b
 MAGIC_estimates <- c();
 WDR_estimates <- c(); LTMLE_estimates <- c(); MAGIC_LTMLE_estimates <- c(); MAGIC_LTMLE_hacky_estimates <- c()
 C_TMLE_estimates <- c()
-for(i in 1:50){
+for(i in 1:2){
   D <- generate_discrete_MDP_dataset(n, 1, state_transition_matrix,
                                      behavior_action_matrix,
                                      transition_based_rewards,
@@ -63,7 +64,7 @@ for(i in 1:50){
   LTMLE_estimates <- c(LTMLE_estimates,
                        LTMLE_estimator(D, Q_hat, V_hat, evaluation_action_matrix, gamma, alpha=0.1)$estimate)
   C_TMLE_estimates <- c(C_TMLE_estimates,
-                        C_LTMLE_softening(D, Q_hat, V_hat, evaluation_action_matrix, gamma, plot_risks=F)$estimate)
+                        C_LTMLE_softening(D, Q_hat, V_hat, evaluation_action_matrix, gamma, plot_risk=F)$estimate)
   # MAGIC_LTMLE_hacky_estimates <- c(MAGIC_LTMLE_hacky_estimates, 
                                    # MAGIC_LTMLE_estimator_hacky(D, Q_hat, V_hat, evaluation_action_matrix, gamma = gamma, n_bootstrap = 100))
   # MAGIC_LTMLE_estimates <- c(MAGIC_LTMLE_estimates, 
