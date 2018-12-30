@@ -54,7 +54,8 @@ MAGIC_estimator <- function(D, Q_hat, V_hat, gamma, horizon, n_bootstrap=1000, f
   
   # Solving x^\top D x under the constraint that A^\top x >= b0. 
   # First row of A is actually an equality constraint. This is specified by setting meq=1 in solve.QP
-  Dmat <- WDR_results$Omega_n[J, J] + b_n[J] %*% t(b_n[J])
+  n <- dim(D)[1]
+  Dmat <- WDR_results$Omega_n[J, J]/n + b_n[J] %*% t(b_n[J])
   if(force_PD)
     Dmat <- Matrix::nearPD(Dmat, eig.tol=1e-10)$mat
   Amat <- t(rbind(rep(1, length(J)), diag(length(J))))
@@ -64,5 +65,5 @@ MAGIC_estimator <- function(D, Q_hat, V_hat, gamma, horizon, n_bootstrap=1000, f
   
   # Compute the MAGIC estimate as the weighted sum of the g^(j)'s, that is x_star^\top b_n[2:horizon]
   estimate <- t(x_star) %*% g_js[J]
-  list(estimate=estimate, x_star=x_star, g_js=g_js, b_n=b_n, Omega_n=WDR_results$Omega_n, bootstrap_CI=bootstrap_CI)
+  list(estimate=estimate, x_star=x_star, g_js=g_js, b_n=b_n, Omega_n=WDR_results$Omega_n, bootstrap_CI=bootstrap_CI, J=J)
 }

@@ -87,24 +87,24 @@ C_LTMLE_softening <- function(D, Q_hat, V_hat, evaluation_action_matrix, gamma, 
 
 # Debugging experiments ---------------------------------------------------
 # Set DGP parameters
-horizon <- 20; n <- 1e2; gamma <- 0.9
-V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
-                                  transition_based_rewards,
-                                  evaluation_action_matrix, horizon, gamma)
-V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
-b <- 0.1e-1*rnorm(1)
-Q_hat <- Q0 +  b
-V_hat <-  V0 +  b
-D <- generate_discrete_MDP_dataset(n, 1, state_transition_matrix,
-                                   behavior_action_matrix,
-                                   transition_based_rewards,
-                                   horizon)
-# debug(C_LTMLE_softening)
-# Check risk
-D_large <- generate_discrete_MDP_dataset(1e4, 1, state_transition_matrix,
-                                         behavior_action_matrix,
-                                         transition_based_rewards,
-                                         horizon)
-C_TMLE_results <- C_LTMLE_softening(D, Q_hat, V_hat, evaluation_action_matrix, gamma, V=3, plot_risk=T, D_large)
+# horizon <- 20; n <- 1e2; gamma <- 0.9
+# V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
+#                                   transition_based_rewards,
+#                                   evaluation_action_matrix, horizon, gamma)
+# V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
+# b <- 0.1e-1*rnorm(1)
+# Q_hat <- Q0 +  b
+# V_hat <-  V0 +  b
+# D <- generate_discrete_MDP_dataset(n, 1, state_transition_matrix,
+#                                    behavior_action_matrix,
+#                                    transition_based_rewards,
+#                                    horizon)
+# # debug(C_LTMLE_softening)
+# # Check risk
+# D_large <- generate_discrete_MDP_dataset(1e4, 1, state_transition_matrix,
+#                                          behavior_action_matrix,
+#                                          transition_based_rewards,
+#                                          horizon)
+# C_TMLE_results <- C_LTMLE_softening(D, Q_hat, V_hat, evaluation_action_matrix, gamma, V=3, plot_risk=T, D_large)
 
 
