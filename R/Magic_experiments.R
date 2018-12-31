@@ -13,7 +13,7 @@ source('penalized_LTMLE.R')
 n_states <- 3; n_actions <- 2
 
 # Set DGP parameters
-horizon <- 20; n <- 1e5; gamma <- 1
+horizon <- 20; n <- 1e3; gamma <- 1
 V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
                                   transition_based_rewards,
                                   evaluation_action_matrix, horizon, gamma)

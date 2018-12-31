@@ -46,14 +46,15 @@ evaluate_EIC <- function(D, epsilons, Q_hat, V_hat, evaluation_action_matrix, ga
 }
 
 # Collaborative TMLE that uses a sequence of decreasingly softened weights
-C_LTMLE_softening <- function(D, Q_hat, V_hat, evaluation_action_matrix, gamma, V=3, plot_risk=F, D_large=NULL){
+C_LTMLE_softening <- function(D, Q_hat, V_hat, evaluation_action_matrix, gamma, V=3, plot_risk=F, D_large=NULL, greedy=T){
   # Split the dataset. Compute sequence of epsilons for each softening coeff. Pick the one that minimizes a cross-validated risk
   # D_split1 <- D[1:floor(0.5 * n), ,]; D_split2 <- D[(floor(0.5 * n) + 1):n, ,]
   n <- dim(D)[1]
   softening_coeffs <- seq(1e-2, 1, length.out = 10)
-  CV_doubly_roubust_risks <- rep(0, length(softening_coeffs))
+  CV_doubly_roubust_risks <- rep(Inf, length(softening_coeffs))
   true_risks <- rep(0, length(softening_coeffs))
   for(i in 1:length(softening_coeffs)){
+    CV_doubly_roubust_risks[i] <- 0
     for(v in 1:V){
       test_ids <- (floor( (v-1) / V * n) + 1) : floor( v / V * n)
       epsilons <- LTMLE_estimator(D[setdiff(1:n, test_ids), ,], Q_hat, V_hat, evaluation_action_matrix, gamma, alpha=softening_coeffs[i])$epsilons
@@ -63,6 +64,7 @@ C_LTMLE_softening <- function(D, Q_hat, V_hat, evaluation_action_matrix, gamma, 
       if(!is.null(D_large)) true_risks[i] <- true_risks[i] + var(evaluate_EIC(D_large, epsilons, Q_hat, V_hat, evaluation_action_matrix, gamma))
       
     }
+    if(greedy & (i > 1) && (CV_doubly_roubust_risks[i] > CV_doubly_roubust_risks[i-1]) ) break # Enforce greedy search
   }
   if(plot_risk){
     

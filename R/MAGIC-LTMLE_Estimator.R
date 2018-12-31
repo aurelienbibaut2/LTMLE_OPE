@@ -1,13 +1,34 @@
 library(boot)
 source('Magic_estimator.R')
 # Two helper functions
+# Two helper functions
 # Expit and logit
 expit <- function(x) { 1 / (1 + exp(-x)) } 
-logit <- function(x) { log(x / (1 - x)) }
+logit_scalar <- Vectorize(function(x) { 
+  if(x > 0 & x < 1){
+    return(log(x / (1 - x)))
+  }else if(x <= 0){
+    return(-Inf)
+  }else{
+    return(Inf)
+  }
+})
+logit <- function(x){
+  if(is.null(dim(x))){
+    return(logit_scalar(x))
+  }else{
+    return(array(logit_scalar(x), dim=dim(x)))
+  }
+}
 
 # Soften weights
 soften <- function(a, alpha){
   a^alpha / sum(a^alpha) 
+}
+
+bound <- function(x){
+  tol <- 1e-4
+  x * as.numeric(x >= tol & x <= 1-tol) + (1-tol) * as.numeric(x > 1-tol) + tol * as.numeric(x < tol)
 }
 
 # LTMLE
@@ -32,7 +53,7 @@ partial_LTMLE <-  function(D, Q_hat, V_hat, evaluation_action_matrix, gamma, alp
   for(t in j:1){
     Delta_t <- 1 + gamma * Delta_t
     R <- D[, t, 'r'] # R_t
-    U_tilde <- (R + gamma * V_evaluated + Delta_t) / (2 * Delta_t) # U_tilde = R_tilde_t + gamma*V_tilde_{t+1}(S_t) in the notations of the write-up
+    U_tilde <- bound((R + gamma * V_evaluated + Delta_t) / (2 * Delta_t)) # U_tilde = R_tilde_t + gamma*V_tilde_{t+1}(S_t) in the notations of the write-up
     Q_t_evaluated <- apply(D[ , t, ], 1, function(x) Q_hat[t, x['s'], x['a']]) # Q_t(A_t, S_t)
     Q_tilde_t_evaluated <- (Q_t_evaluated + Delta_t) / (2 * Delta_t)
     epsilon <- glm(U_tilde ~ offset(logit(Q_tilde_t_evaluated)) + 1, 
@@ -71,8 +92,8 @@ MAGIC_LTMLE_estimator_hacky <- function(D, Q_hat, V_hat, evaluation_action_matri
   for(t in 1:horizon){
     g_js_LTMLE <- cbind(g_js_LTMLE, partial_LTMLE(D, Q_hat, V_hat, evaluation_action_matrix, gamma=gamma, alpha=1, j=t)$estimate)
   }
-  x_star <- MAGIC_estimator(D, Q_hat, V_hat, gamma, horizon, n_bootstrap=n_bootstrap)$x_star
-  t(x_star) %*% as.vector(g_js_LTMLE)
+  MAGIC_result <- MAGIC_estimator(D, Q_hat, V_hat, gamma, horizon, n_bootstrap=n_bootstrap)
+  t(MAGIC_result$x_star) %*% as.vector(g_js_LTMLE[MAGIC_result$J-1])
 }
 
 # MAGIC LTMLE. Proper version
