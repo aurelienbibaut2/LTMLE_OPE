@@ -105,7 +105,7 @@ C_LTMLE_penalization <- function(D, Q_hat, V_hat, evaluation_action_matrix, gamm
                                        var(evaluate_EIC(D[test_ids, ,], epsilons, Q_hat, V_hat, evaluation_action_matrix, gamma))
       )
     }
-    if(greedy & (i > 2) && 
+    if(greedy & (i > 2) &&
        (CV_doubly_roubust_risks[i] > CV_doubly_roubust_risks[i-1] 
         + 0.1 * abs(CV_doubly_roubust_risks[i-1] > CV_doubly_roubust_risks[i-2]) ) ) break # Enforce greedy search
   }
