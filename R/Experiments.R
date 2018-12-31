@@ -68,8 +68,14 @@ results <- foreach(i=1:nrow(jobs), .combine = rbind,
                                                         behavior_action_matrix,
                                                         transition_based_rewards,
                                                         horizon)
-                     b <- 3e-1 * rnorm(1)
-                     Q_hat <- Q0 + b; V_hat <- V0 + b
+                     # Apply bias while respecting model's constraints
+                     b <- 1e-2 * rnorm(1)
+                     Delta_t <- 0
+                     for(t in horizon:1){
+                       Delta_t <- 1 + gamma * Delta_t
+                       Q_hat[t, ,] <- 2 * Delta_t * (expit(logit( (Q0[t, ,] + Delta_t) / (2*Delta_t) ) + b) - 1/2)
+                       V_hat[t, ] <- 2 * Delta_t * (expit(logit( (V0[t, ] + Delta_t) / (2 * Delta_t) ) + b) - 1/2)
+                     }
                      #Q_hat <- Q_hats[[as.character(jobs[i, ]$n)]]
                      #V_hat <- V_hats[[as.character(jobs[i, ]$n)]]
                      
@@ -139,7 +145,7 @@ print(summary_table)
 # Plot nMSE against n
 library(ggplot2)
 MSE_plot <- ggplot(data=MSE_table, aes(x=log10(n), y=log10(n*MSE), color=estimator, shape=estimator)) + 
-  scale_shape_manual( values=c('MAGIC'=15, 'MAGIC-LTMLE'=15,  'C-TMLE'=15, 'C-TMLE-greedy=15',  'C-TMLE_true_risk'=15, 'LTMLE_0.5'=19, 'LTMLE_0.1'=19, 'WDR'=19) ) +
+  scale_shape_manual( values=c('MAGIC'=15, 'MAGIC-LTMLE'=15,  'C-TMLE'=15, 'C-TMLE-greedy'=15,  'C-TMLE_true_risk'=15, 'LTMLE_0.5'=19, 'LTMLE_0.1'=19, 'WDR'=19) ) +
   # scale_size_manual( values=c('LTMLE'=6, 'DR'=2, 'IS'=2, 'stepIS'=2, 'stepWIS'=2, 'WDR'=2, 'WIS'=2)) +
   geom_line(size=1) + geom_point(size=8) + ggtitle(paste('ModelWin, horizon=', horizon, ', number of draws per point=', nb_repeats))
 print(MSE_plot)
