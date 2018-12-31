@@ -100,11 +100,11 @@ penalized_LTMLE_estimator <-  function(D, Q_hat, V_hat, evaluation_action_matrix
     loss <- function(epsilon) targeting_loss(epsilon, Delta_t, t, gamma,  
                            D[, t, ], U_tilde, Q_tilde_t_evaluated, V_evaluated, 
                            penalty=penalty)
-    loss_bis <- function(epsilon) targeting_loss_bis(epsilon, Delta_t, t, gamma,  
-                                                     D, U_tilde, Q_tilde_t_evaluated, V_evaluated, 
-                                                     Q_hat, V_hat,
-                                                     evaluation_action_matrix, penalty)
-    epsilon <- optimize(f = Vectorize(loss_bis), lower=-1, upper=1)$minimum
+    # loss_bis <- function(epsilon) targeting_loss_bis(epsilon, Delta_t, t, gamma,  
+    #                                                  D, U_tilde, Q_tilde_t_evaluated, V_evaluated, 
+    #                                                  Q_hat, V_hat,
+    #                                                  evaluation_action_matrix, penalty)
+    epsilon <- optimize(f = Vectorize(loss), lower=-1, upper=1)$minimum
     epsilons <- c(epsilons, epsilon)
     # Evaluate Q_tilde(s_t, a) for a_t = 1, a_t = 2
     Q_tilde_t_star <- expit( logit( (Q_hat[t, , ] + Delta_t) / (2 * Delta_t)  )
