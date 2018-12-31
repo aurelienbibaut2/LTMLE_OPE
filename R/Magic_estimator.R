@@ -1,7 +1,6 @@
 library(MASS)
 library(quadprog)
 library(boot)
-source('MDP_modelWin.R')
 source('Estimators.R')
 
 # One helper function

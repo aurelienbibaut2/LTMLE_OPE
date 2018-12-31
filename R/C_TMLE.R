@@ -93,7 +93,7 @@ C_LTMLE_softening <- function(D, Q_hat, V_hat, evaluation_action_matrix, gamma, 
 C_LTMLE_penalization <- function(D, Q_hat, V_hat, evaluation_action_matrix, gamma, V=3, plot_risk=F,  greedy=T){
   # Split the dataset. Compute sequence of epsilons for each softening coeff. Pick the one that minimizes a cross-validated risk
   n <- dim(D)[1]
-  penalty_coeffs <- 10^c(seq(2, -5, length.out = 100), 0)
+  penalty_coeffs <- c(10^c(seq(0, -5, length.out = 9)), 0)
   CV_doubly_roubust_risks <- rep(Inf, length(penalty_coeffs))
   for(i in 1:length(penalty_coeffs)){
     CV_doubly_roubust_risks[i] <- 0
@@ -105,11 +105,13 @@ C_LTMLE_penalization <- function(D, Q_hat, V_hat, evaluation_action_matrix, gamm
                                        var(evaluate_EIC(D[test_ids, ,], epsilons, Q_hat, V_hat, evaluation_action_matrix, gamma))
       )
     }
-    if(greedy & (i > 1) && (CV_doubly_roubust_risks[i] > CV_doubly_roubust_risks[i-1]) ) break # Enforce greedy search
+    if(greedy & (i > 2) && 
+       (CV_doubly_roubust_risks[i] > CV_doubly_roubust_risks[i-1] 
+        + 0.1 * abs(CV_doubly_roubust_risks[i-1] > CV_doubly_roubust_risks[i-2]) ) ) break # Enforce greedy search
   }
   if(plot_risk){
     print(CV_doubly_roubust_risks)
-    plot(log10(penalty_coeffs), CV_doubly_roubust_risks)
+    plot(CV_doubly_roubust_risks)
   }
   # Output the estimate computed on the full dataset that uses the softening coeff that minimizes the CV risk
   list(estimate = penalized_LTMLE_estimator(D, Q_hat, V_hat, evaluation_action_matrix, gamma, alpha=1,
@@ -120,26 +122,27 @@ C_LTMLE_penalization <- function(D, Q_hat, V_hat, evaluation_action_matrix, gamm
 
 # Debugging experiments ---------------------------------------------------
 # Set DGP parameters
-horizon <- 20; n <- 1e2; gamma <- 1
-V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
-                                  transition_based_rewards,
-                                  evaluation_action_matrix, horizon, gamma)
-V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
-b <- 0.1e-1*rnorm(1)
-Q_hat <- Q0 +  b
-V_hat <-  V0 +  b
-D <- generate_discrete_MDP_dataset(n, 1, state_transition_matrix,
-                                   behavior_action_matrix,
-                                   transition_based_rewards,
-                                   horizon)
-# debug(C_LTMLE_softening)
-# Check risk
-# D_large <- generate_discrete_MDP_dataset(1e4, 1, state_transition_matrix,
-#                                          behavior_action_matrix,
-#                                          transition_based_rewards,
-#                                          horizon)
-# C_LTMLE_softening(D, Q_hat, V_hat, evaluation_action_matrix, gamma, V=3, plot_risk=T, D_large=NULL)$estimate
-C_LTMLE_penalization(D, Q_hat, V_hat, evaluation_action_matrix, gamma, V=3, plot_risk=T)
-
+# horizon <- 20; n <- 1e2; gamma <- 1
+# V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
+#                                   transition_based_rewards,
+#                                   evaluation_action_matrix, horizon, gamma)
+# V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
+# b <- 0.1e-1*rnorm(1)
+# Q_hat <- Q0 +  b
+# V_hat <-  V0 +  b
+# D <- generate_discrete_MDP_dataset(n, 1, state_transition_matrix,
+#                                    behavior_action_matrix,
+#                                    transition_based_rewards,
+#                                    horizon)
+# # debug(C_LTMLE_softening)
+# # Check risk
+# # D_large <- generate_discrete_MDP_dataset(1e4, 1, state_transition_matrix,
+# #                                          behavior_action_matrix,
+# #                                          transition_based_rewards,
+# #                                          horizon)
+# par(mfrow=c(2,1))
+# C_LTMLE_softening(D, Q_hat, V_hat, evaluation_action_matrix, gamma, V=3, plot_risk=T, D_large=NULL)
+# C_LTMLE_penalization(D, Q_hat, V_hat, evaluation_action_matrix, gamma, V=3, plot_risk=T, greedy=T)
+# 
 
 

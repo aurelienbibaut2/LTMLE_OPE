@@ -41,9 +41,9 @@ bellman_iterations <- function(transitions_dataset, evaluation_action_matrix, ga
     bellman_dataset[, 'bellman_target'] <- apply(transitions_dataset, 1, 
                                                  function(x) x['r'] + gamma * na_to_zero(as.numeric(V_hat[x['new_s']])) )
     # Q_hat_lm_fit <- lm(bellman_target ~ (factor(s) + factor(a))^2, data=data.frame(bellman_dataset))
-    Q_hat_lm_fit <- fastLm(bellman_target ~ (factor(s) + factor(a))^2, data=data.frame(bellman_dataset))
+    Q_hat_lm_fit <- lm(bellman_target ~ (factor(s) + factor(a))^2, data=data.frame(bellman_dataset))
     # Update Q_hat
-    new_Q_hat <- outer(1:n_states, 1:n_actions, FUN= function(s, a) predict(Q_hat_lm_fit, newdata=data.frame(cbind(bellman_target=0, s=s, a=a))) )
+    new_Q_hat <- outer(1:n_states, 1:n_actions, FUN= function(s, a) predict(Q_hat_lm_fit, newdata=data.frame(cbind(s=s, a=a))) )
     # Check stopping criterion
     Delta_Q_hat <- new_Q_hat - Q_hat
     if( sqrt(sum(Delta_Q_hat^2)) / sqrt(sum(Q_hat^2)) < relative_tol )
