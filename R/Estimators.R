@@ -1,3 +1,5 @@
+source('utils.R')
+
 AM_estimator <- function(D, V_hat, d_hat=NA, t){ # Thomas and Brunskill's Formula for Approximate Model pg.4
   #Use data to get the estimate of d and V_hat
   if(is.na(d_hat)){
@@ -139,30 +141,7 @@ WDR_estimator_TB <- function(D, Q_hat, V_hat, gamma=1, j=NULL, compute_covarianc
   list(g_js=g_js, Omega_n=Omega_n)
 }
 
-# Two helper functions
-# Expit and logit
-expit <- function(x) { 1 / (1 + exp(-x)) } 
-logit_scalar <- Vectorize(function(x) { 
-  if(x > 0 & x < 1){
-    return(log(x / (1 - x)))
-  }else if(x <= 0){
-    return(-Inf)
-  }else{
-    return(Inf)
-  }
-})
-logit <- function(x){
-  if(is.null(dim(x))){
-    return(logit_scalar(x))
-  }else{
-    return(array(logit_scalar(x), dim=dim(x)))
-  }
-}
 
-# Soften weights
-soften <- function(a, alpha){
-  a^alpha / sum(a^alpha) 
-}
 
 # LTMLE
 LTMLE_estimator <-  function(D, Q_hat, V_hat, evaluation_action_matrix, gamma=1, alpha){

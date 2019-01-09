@@ -2,16 +2,7 @@ library(MASS)
 library(quadprog)
 library(boot)
 source('Estimators.R')
-
-# One helper function
-distance_to_interval <- function(interval, x){
-  lb <- interval[1]; ub <- interval[2]
-  if(x >= lb && x <= ub){
-    return(0)
-  }else{
-    return(min(abs(x-lb), abs(x-ub)))
-  }
-}
+source('utils.R')
 
 # Fast bootstrap of g^(horizon)(D) based on the observation that WDR estimator is the mean of 
 # trajectory-specific statistics (called xi below), so it's just a matter of resampling these statistics rather 
