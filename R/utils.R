@@ -20,8 +20,9 @@ logit <- function(x){
 
 # Soften weights
 soften <- function(a, alpha){
-  a^alpha / sum(a^alpha) 
+  a^alpha / sum(a^alpha)
 }
+
 
 # One helper function
 distance_to_interval <- function(interval, x){
@@ -32,3 +33,10 @@ distance_to_interval <- function(interval, x){
     return(min(abs(x-lb), abs(x-ub)))
   }
 }
+
+# Bound quantities in [0,1] away from 0 and 1
+bound <- function(x){
+  tol <- 1e-4
+  x * as.numeric(x >= tol & x <= 1-tol) + (1-tol) * as.numeric(x > 1-tol) + tol * as.numeric(x < tol)
+}
+

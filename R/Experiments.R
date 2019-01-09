@@ -9,7 +9,7 @@ source('Q_learning_discrete_state_space.R')
 source('penalized_LTMLE.R')
 source('MAGIC-LTMLE_Estimator.R')
 source('single_epsilon_LTMLE.R')
-
+source('partial_LTMLE.R')
 source('MDP_modelWin.R')
 # source('MDP_modelFail.R')
 
@@ -26,7 +26,7 @@ source('MDP_modelWin.R')
 # V_hat[3, ] <- 0
 
 # ModelWin parameters
-horizon <- 20; gamma <- 1; n_states <- 3; n_actions <- 2
+horizon <- 10; gamma <- 1; n_states <- 3; n_actions <- 2
 V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
                                   transition_based_rewards,
                                   evaluation_action_matrix, horizon, gamma = gamma)
@@ -34,9 +34,9 @@ V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
 
 # Specify jobs ------------------------------------------------------------
 library(foreach); library(doParallel)
-nb_repeats <- (parallel::detectCores() - 1)
+nb_repeats <- (parallel::detectCores() - 1)  * 1
 # ns <- c(50, 100, 200, 500, 1000, 5000, 10000)
-ns <- c(100, 500, 1000, 1e4)
+ns <- c(100, 500, 1000)
 jobs <- expand.grid(n = ns, repeat.id = 1:nb_repeats)
 
 
@@ -103,6 +103,12 @@ results <- foreach(i=1:nrow(jobs), .combine = rbind,
                                                              evaluation_action_matrix,
                                                              gamma, D_large=NULL, V=3, greedy=T))
                      
+                     # one_step_result <- try(one_step_LTMLE(D, Q_hat, V_hat, evaluation_action_matrix, 
+                     #                                   gamma=gamma, verbose=F, max_it=20, step_size=1e-1))
+                     LTMLE_1.0_result <- try(LTMLE_estimator(D, Q_hat, V_hat,
+                                                             evaluation_action_matrix, gamma, alpha=1))
+                     
+                     
                      rbind(
                        #c(n=jobs[i, ]$n, estimator='IS', estimate=IS_estimator(D)),
                            # c(n=jobs[i, ]$n, estimator='WIS', estimate=WIS_estimator(D)),
@@ -111,15 +117,25 @@ results <- foreach(i=1:nrow(jobs), .combine = rbind,
                            # c(n=jobs[i, ]$n, estimator='DR',  estimate=DR_estimator_JL(D, Q_hat=Q0, V_hat=V0)),
                            # c(n=jobs[i, ]$n, estimator='DR_TB',  estimate=DR_estimator_TB(D, Q_hat=Q0, V_hat=V0)),
                            c(n=jobs[i, ]$n, estimator='WDR', estimate=try(WDR_estimator_TB(D, Q_hat=Q_hat, V_hat=V_hat,
-                                                                                        gamma = gamma, j = horizon)$g_js[horizon+1]), base_est_id=NA)
+                                                                                        gamma = gamma, j = horizon)$g_js[horizon+1]), 
+                             base_est_id=NA, epsilon=NA, score_eq=NA)
                            , c(n=jobs[i, ]$n, estimator='MAGIC', estimate=try(MAGIC_estimator(D, Q_hat, V_hat, gamma = gamma,
                                                                                         horizon = horizon, n_bootstrap = 1000,
-                                                                                        force_PD = T)$estimate), base_est_id=NA)
+                                                                                        force_PD = T)$estimate),
+                               base_est_id=NA, epsilon=NA, score_eq=NA)
                            # , c(n=jobs[i, ]$n, estimator='MAGIC-LTMLE', estimate=try(MAGIC_LTMLE_estimator_hacky(D, Q_hat, V_hat, evaluation_action_matrix, 
                            #                                                          gamma, n_bootstrap=1000) ))
-                           , c(n=jobs[i, ]$n, estimator='LTMLE_1.0', estimate=try(LTMLE_estimator(D, Q_hat, V_hat,
-                                                                                                  evaluation_action_matrix, gamma, alpha=1)$estimate),
-                               base_est_id=NA)
+                           , c(n=jobs[i, ]$n, estimator='LTMLE_1.0', estimate=try(LTMLE_1.0_result$estimate),
+                               base_est_id=NA, epsilon=LTMLE_1.0_result$epsilons[1], score_eq=NA)
+                           , c(n=jobs[i, ]$n, estimator='LTMLE_0.0', estimate=try(LTMLE_estimator(D, Q_hat, V_hat,
+                                                                                                  evaluation_action_matrix, gamma, alpha=0)$estimate),
+                               base_est_id=NA, epsilon=LTMLE_1.0_result$epsilons[1], score_eq=NA)
+                           , c(n=jobs[i, ]$n, estimator='partial_LTMLE_1.0', estimate=try(partial_LTMLE_estimator(D, Q_hat, V_hat,
+                                                                                                          evaluation_action_matrix, gamma, alpha=1,j=1)$estimate),
+                               base_est_id=NA, epsilon=NA, score_eq=NA)
+                           , c(n=jobs[i, ]$n, estimator='partial_LTMLE_0.3', estimate=try(partial_LTMLE_estimator(D, Q_hat, V_hat,
+                                                                                                                  evaluation_action_matrix, gamma, alpha=0.3,j=1)$estimate),
+                               base_est_id=NA, epsilon=NA, score_eq=NA)
                            # , c(n=jobs[i, ]$n, estimator='LTMLE_0.7', estimate=try(LTMLE_estimator(D, Q_hat, V_hat, 
                            #                                                                        evaluation_action_matrix, gamma, alpha=0.7)$estimate))
                            # , c(n=jobs[i, ]$n, estimator='LTMLE_0.5', estimate=try(LTMLE_estimator(D, Q_hat, V_hat, 
@@ -134,14 +150,16 @@ results <- foreach(i=1:nrow(jobs), .combine = rbind,
                            # # c(n=jobs[i, ]$n, estimator='penalizedLTMLE_3', estimate=try(penalized_LTMLE_estimator(D, Q_hat, V_hat, 
                            #                                                                                     # evaluation_action_matrix, gamma, alpha=1, 
                            #                                                                                     # penalty = 0.1)$estimate)),
-                           # , c(n=jobs[i, ]$n, estimator='C-TMLE', estimate=try(C_LTMLE_softening(D, Q_hat, V_hat, 
+                           # , c(n=jobs[i, ]$n, estimator='C-TMLE', estimate=try(C_LTMLE_softening(D, Q_hat, V_hat,
                            #                                                                       evaluation_action_matrix,
                            #                                                                       gamma, D_large=NULL, V=3, greedy=F)$estimate) )
+                           , c(n=jobs[i, ]$n, estimator='MAGIC_LTMLE', estimate=try(MAGIC_bootstrap_LTMLE(D, Q_hat, V_hat, gamma,
+                                                                                                          evaluation_action_matrix, force_PD=T)$estimate),
+                               base_est_id=NA, epsilon=NA, score_eq=NA )
                            , c(n=jobs[i, ]$n, estimator='C-TMLE-sftning', estimate=try(C_LTMLE_result$estimate),
-                               base_est_id=try(C_LTMLE_result$softening_coeff))
-                           , c(n=jobs[i, ]$n, estimator='1step_LTMLE', estimate=try(one_step_LTMLE(D, Q_hat, V_hat, evaluation_action_matrix, 
-                                                                                                   gamma=gamma, verbose=F, max_it=20, step_size=1e-1)$estimate),
-                               base_est_id=NA)
+                               base_est_id=try(C_LTMLE_result$softening_coeff), epsilon=NA, score_eq=NA )
+                           # , c(n=jobs[i, ]$n, estimator='1step_LTMLE', estimate=try(one_step_result$estimate),
+                           #     base_est_id=NA, epsilon=one_step_result$epsilon, score_eq=try(one_step_result$score_eq))
                            #, c(n=jobs[i, ]$n, estimator='C-TMLE-pnlty', estimate=try(C_LTMLE_penalization(D, Q_hat, V_hat, 
                            #                                                                             evaluation_action_matrix,
                            #                                                                             gamma, V=3, plot_risk=F, greedy=T)$estimate) )
@@ -153,6 +171,9 @@ stopCluster(cl)
 results_df <- transform(as.data.frame(results), 
                         n=as.numeric(as.character(n)),
                         estimate=as.numeric(as.character(estimate)))
+estimators <- c('C-TMLE-sftning', 'MAGIC', 'MAGIC_LTMLE')
+results_df <- subset(results_df, estimator %in% estimators)
+
 results_df$squared_error <- (results_df$estimate - V0[1,1])^2
 
 MSE_table <- aggregate(results_df$squared_error, 
@@ -179,11 +200,11 @@ print(table(base_est_id_df$n, base_est_id_df$base_est_id))
 library(ggplot2)
 MSE_plot <- ggplot(data=MSE_table, aes(x=log10(n), y=log10(n*MSE), color=estimator, shape=estimator)) + 
   scale_shape_manual( values=c('MAGIC'=15,
-                               'C-TMLE-sftning'=15, '1step_LTMLE'=15,
+                               'C-TMLE-sftning'=15, '1step_LTMLE'=15, 'MAGIC_LTMLE'=15, 'partial_LTMLE_1.0'=15, 'partial_LTMLE_0.3'=15,
                                'LTMLE_1.0'=19, 'LTMLE_0.7'=19, 'LTMLE_0.5'=19, 'LTMLE_0.1'=19, 'LTMLE_0.0'=19, 
                                'WDR'=18) ) +
   scale_size_manual( values=c('MAGIC'=8,
-                              'C-TMLE-sftning'=8, '1step_LTMLE'=8,
+                              'C-TMLE-sftning'=8, '1step_LTMLE'=8, 'MAGIC_LTMLE'=8, 'partial_LTMLE_1.0'=8, 'partial_LTMLE_0.3'=8,
                               'LTMLE_1.0'=4, 'LTMLE_0.7'=4, 'LTMLE_0.5'=4, 'LTMLE_0.1'=4, 'LTMLE_0.0'=4, 
                               'WDR'=4)) +
   geom_line(size=1) + geom_point(aes(size=estimator)) + ggtitle(paste('ModelWin, horizon=', horizon, ', number of draws per point=', nb_repeats))

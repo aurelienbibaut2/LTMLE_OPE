@@ -1,141 +1,65 @@
 library(boot)
-source('Magic_estimator.R')
 source('utils.R')
+source('partial_LTMLE.R')
 
-bound <- function(x){
-  tol <- 1e-4
-  x * as.numeric(x >= tol & x <= 1-tol) + (1-tol) * as.numeric(x > 1-tol) + tol * as.numeric(x < tol)
-}
-
-# LTMLE
-partial_LTMLE <-  function(D, Q_hat, V_hat, evaluation_action_matrix, gamma, alpha, j){
-  # Get dataset dimensions
+# Estimator ---------------------------------------------------------------
+MAGIC_bootstrap_LTMLE <- function(D, Q_hat, V_hat, gamma, evaluation_action_matrix, force_PD=T){
   n <- dim(D)[1]
   horizon <- dim(D)[2]
-  D_star <- matrix(0, nrow=n, ncol=j)
-  Delta_t <- 0
-  t <- horizon
-  while(t > j){
-    Delta_t <- 1 + gamma * Delta_t
-    t <- t - 1
-  }
   
-  epsilons <- c()
-  if(t == horizon){
-    V_evaluated <- rep(0, n) #V_{t+1}(S_{t+1})
-  }else{
-    V_evaluated <- V_hat[t+1, D[, t+1, 's']]
-  }
-  for(t in j:1){
-    Delta_t <- 1 + gamma * Delta_t
-    R <- D[, t, 'r'] # R_t
-    U_tilde <- bound((R + gamma * V_evaluated + Delta_t) / (2 * Delta_t)) # U_tilde = R_tilde_t + gamma*V_tilde_{t+1}(S_t) in the notations of the write-up
-    Q_t_evaluated <- apply(D[ , t, ], 1, function(x) Q_hat[t, x['s'], x['a']]) # Q_t(A_t, S_t)
-    Q_tilde_t_evaluated <- (Q_t_evaluated + Delta_t) / (2 * Delta_t)
-    epsilon <- glm(U_tilde ~ offset(logit(Q_tilde_t_evaluated)) + 1, 
-                   family=quasibinomial, weights = soften(D[,t, 'rho_t'], alpha) )$coefficients[1]
-    epsilons <- c(epsilons, epsilon)
-    # Evaluate Q_tilde(s_t, a) for a_t = 1, a_t = 2
-    Q_tilde_t_star <- expit(logit( (Q_hat[t, ,] + Delta_t) / (2 * Delta_t) ) + epsilon) # Q_tilde_t^*
-    
-    # Then set V_tilde(s_t) = \sum_{a} Q_tilde(s_t, a) pi_a(a|s_t)
-    V_tilde <- apply(Q_tilde_t_star * evaluation_action_matrix, 1, sum)
-    
-    # Compute V = 2 * Delta_t * (V_tilde - 1)
-    V <- 2 * Delta_t * (V_tilde - 1/2)
-    Q_t_star <- 2 * Delta_t * (Q_tilde_t_star - 1/2)
-    
-    # Compute efficient influence curve at Q_t_star
-    # Note that at that point we haven't updated V_evaluated yet, so it is still V^*(S_{t+1})
-    # Also note that the case t=horizon is already taken care of since at t=horizon V_evaluated=0
-    D_star[, t] <- gamma^t * D[, t, 'rho_t'] * (D[, t, 'r'] + gamma * V_evaluated
-                                                - apply(D[, t, ], 1, function(x) Q_t_star[x['s'], x['a']]))
-    # Evaluate V
-    V_evaluated <-  V[D[, t, 's']]
-    
-    
-    # V_tilde is gonna be V_{t+1} in the next iteration
-  }
-  # The average of the last V is the LTML estimator of the value. We return the V vector pre-averaging
-  list(estimate=mean(V_evaluated), EIC=apply(D_star, 1, sum))
-}
-
-# MAGIC LTMLE. Hacky version that uses the x_star vector corresponding to WDR and uses it to weight the equivalent 
-# sequence of truncated LTMLEs
-MAGIC_LTMLE_estimator_hacky <- function(D, Q_hat, V_hat, evaluation_action_matrix, gamma, n_bootstrap){
-  horizon <- dim(D)[2]
-  g_js_LTMLE <- c()
-  for(t in 1:horizon){
-    g_js_LTMLE <- cbind(g_js_LTMLE, partial_LTMLE(D, Q_hat, V_hat, evaluation_action_matrix, gamma=gamma, alpha=1, j=t)$estimate)
-  }
-  MAGIC_result <- MAGIC_estimator(D, Q_hat, V_hat, gamma, horizon, n_bootstrap=n_bootstrap)
-  t(MAGIC_result$x_star) %*% as.vector(g_js_LTMLE[MAGIC_result$J-1])
-}
-
-# MAGIC LTMLE. Proper version
-MAGIC_LTMLE_estimator <- function(D, Q_hat, V_hat, evaluation_action_matrix, gamma, n_bootstrap, approximation){
-  horizon <- dim(D)[2]; n <- dim(D)[1]
-  # J: set of indices j
-  if(horizon >= 10){
-    J <- (floor(seq(1, horizon, length.out=10)))
-  }else{
-    J <- (1:horizon)
-  }
+  # # Get g^(j)s
+  n_alphas <- 10
+  js <- (ceiling(seq(1, horizon, length.out=n_alphas))) 
+  alphas <- seq(0, 1, length.out = n_alphas)
+  R1 <- horizon * 2
+  R2 <- horizon * 2
+  g_js <- sapply(1:n_alphas, function(j) partial_LTMLE_estimator(D, Q_hat=Q_hat, V_hat=V_hat, gamma=gamma, 
+                                                         evaluation_action_matrix = evaluation_action_matrix, alpha=alphas[j], j=js[j])$estimate)
   
-  g_js_LTMLE <- c()
-  xi <- c()
-
-  # Get estimates and efficient influence curve (EIC) for the sequence of truncated LTMLEs
-  for(t in J){
-    if(approximation=='partial'){
-      partial_LTMLE_result <- partial_LTMLE(D, Q_hat, V_hat, evaluation_action_matrix, gamma=gamma, alpha=1, j=t)
-      xi <- cbind(xi, partial_LTMLE_result$EIC - mean(partial_LTMLE_result$EIC))
-      g_js_LTMLE <- cbind(g_js_LTMLE, partial_LTMLE_result$estimate)
-    }else{
-      alpha <- (t-1)/max(J-1)
-      softened_LTMLE_result <- LTMLE_estimator(D, Q_hat, V_hat, evaluation_action_matrix, gamma=gamma, alpha=alpha)
-      EIC  <- evaluate_EIC(D, softened_LTMLE_result$epsilons, Q_hat, V_hat, evaluation_action_matrix, gamma)
-      xi <- cbind(xi, EIC - mean(EIC))
-      g_js_LTMLE <- cbind(g_js_LTMLE, softened_LTMLE_result$estimate)
-    }
-    
-   
-  }
-  # Compute covariance matrix of the influence curves
-  if(approximation=='partial'){
-    Omega_n <- t(xi) %*% xi / n
-  }else{
-    Omega_n <- t(xi) %*% xi
-  }
-  # Get bias by bootstrapping g^(horizon)
-  bootstrapped_estimates <- boot(data = D, 
-                                 statistic = function(data, indices) LTMLE_estimator(data[indices, ,],
-                                                                                     Q_hat, V_hat, evaluation_action_matrix, gamma=gamma, alpha=1)$estimate, 
-                                 R=20)$t
-  bootstrap_CI <- quantile(bootstrapped_estimates, probs = c(0.1 / 2, 1 - 0.1 / 2))
-  b_n <- sapply(g_js_LTMLE, Vectorize(function(g_j) distance_to_interval(bootstrap_CI, g_j)) )
+  # # Get bias by bootstrapping g^(horizon)
+  bootstrap_CI <- quantile(boot(data=D, statistic=function(data, indices) partial_LTMLE_estimator(D[indices, , ], Q_hat=Q_hat, V_hat=V_hat, gamma=gamma, 
+                                                                                          evaluation_action_matrix = evaluation_action_matrix, 
+                                                                                          alpha=1, j=horizon)$estimate,
+                                R = R1)$t, probs = c(0.1 / 2, 1 - 0.1 / 2))
+  b_n <- sapply(g_js, Vectorize(function(g_j) distance_to_interval(bootstrap_CI, g_j)) )
   
-  # Solving x^\top D x under the constraint that A^\top x >= b0. 
-  # First row of A is actually an equality constraint. This is specified by setting meq=1 in solve.QP
-  Dmat <- Matrix::nearPD(Omega_n / n + b_n %*% t(b_n), eig.tol=1e-10)$mat
-  Amat <- t(rbind(rep(1, length(J)), diag(length(J))))
-  dvec <- rep(0, length(J))
-  b0 <- c(1, rep(0, length(J)))
+  # Get covariance matrix by bootstrapping all g_js
+  X <- boot(data=D, 
+            statistic=function(data, indices) sapply(1:n_alphas, 
+                                                     function(j) partial_LTMLE_estimator(D[indices, , ], 
+                                                                                     Q_hat=Q_hat, V_hat=V_hat, gamma=gamma, 
+                                                                                     evaluation_action_matrix = evaluation_action_matrix, 
+                                                                                     alpha=alphas[j], j=js[j])$estimate),
+            R = R2)$t
+  Omega_n <- t((X - rep(1, horizon * 2) %*% t(apply(X, 2, mean)))) %*% (X - rep(1, horizon * 2) %*% t(apply(X, 2, mean))) / R2
+  
+  # Define and solve QP
+  Dmat <- Omega_n + b_n %*% t(b_n)
+  if(force_PD)
+    Dmat <- Matrix::nearPD(Dmat, eig.tol=1e-10)$mat
+  Amat <- t(rbind(rep(1, n_alphas), diag(n_alphas)) )
+  dvec <- rep(0, n_alphas)
+  b0 <- c(1, rep(0, n_alphas))
   x_star <- solve.QP(Dmat=Dmat, dvec=dvec, Amat=Amat, bvec=b0, meq=1)$solution
   
   # Compute the MAGIC estimate as the weighted sum of the g^(j)'s, that is x_star^\top b_n[2:horizon]
-  estimate <- t(x_star) %*% as.vector(g_js_LTMLE)
-  list(estimate=estimate, x_star=x_star, g_js=g_js_LTMLE, b_n=b_n, Omega_n=Omega_n, bootstrap_CI=bootstrap_CI)
+  estimate <- t(x_star) %*% g_js
+  # Output
+  list(estimate=estimate, x_star=x_star, g_js=g_js, b_n=b_n, Omega_n=Omega_n, bootstrap_CI=bootstrap_CI)
 }
 
-# Debugging experiments ---------------------------------------------------
-# horizon <- 20; n <- 1e3; gamma <- 1
+# # Debugging simulations ---------------------------------------------------
+# # Parameters of the environment
+# n_states <- 3; n_actions <- 2
+# # Set DGP parameters
+# horizon <- 10; n <- 1e3; gamma <- 1
 # V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
 #                                   transition_based_rewards,
-#                                   evaluation_action_matrix, horizon, gamma = gamma)
+#                                   evaluation_action_matrix, horizon, gamma)
+# # # # Compute truth
 # V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
-# 
-# b <- 1e-1*rnorm(1)
+# b <- 1e-5*rnorm(1)
+# # b <- 0
 # Q_hat <- Q0 +  b
 # V_hat <-  V0 +  b
 # 
@@ -143,8 +67,7 @@ MAGIC_LTMLE_estimator <- function(D, Q_hat, V_hat, evaluation_action_matrix, gam
 #                                    behavior_action_matrix,
 #                                    transition_based_rewards,
 #                                    horizon)
-# 
-# # MAGIC_LTMLE_estimator_hacky(D, Q_hat, V_hat, evaluation_action_matrix, gamma = gamma, n_bootstrap = 100)
-# res <- MAGIC_LTMLE_estimator(D, Q_hat, V_hat, evaluation_action_matrix, gamma = gamma, n_bootstrap = 20, approximation='softening')
-# print(res$estimate)
-# print(round(res$x_star, 3))
+# res <- MAGIC_bootstrap_LTMLE(D, Q_hat, V_hat, gamma, evaluation_action_matrix, force_PD=T)
+
+
+
