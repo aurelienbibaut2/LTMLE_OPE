@@ -8,6 +8,7 @@ source('Magic_estimator.R')
 source('Q_learning_discrete_state_space.R')
 source('penalized_LTMLE.R')
 source('MAGIC-LTMLE_Estimator.R')
+source('single_epsilon_LTMLE.R')
 
 source('MDP_modelWin.R')
 # source('MDP_modelFail.R')
@@ -35,7 +36,7 @@ V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
 library(foreach); library(doParallel)
 nb_repeats <- (parallel::detectCores() - 1)
 # ns <- c(50, 100, 200, 500, 1000, 5000, 10000)
-ns <- c(100, 500, 1000, 5000, 1e4, 2e4)
+ns <- c(100, 500, 1000, 1e4)
 jobs <- expand.grid(n = ns, repeat.id = 1:nb_repeats)
 
 
@@ -116,8 +117,9 @@ results <- foreach(i=1:nrow(jobs), .combine = rbind,
                                                                                         force_PD = T)$estimate), base_est_id=NA)
                            # , c(n=jobs[i, ]$n, estimator='MAGIC-LTMLE', estimate=try(MAGIC_LTMLE_estimator_hacky(D, Q_hat, V_hat, evaluation_action_matrix, 
                            #                                                          gamma, n_bootstrap=1000) ))
-                           # , c(n=jobs[i, ]$n, estimator='LTMLE_1.0', estimate=try(LTMLE_estimator(D, Q_hat, V_hat, 
-                           #                                                                        evaluation_action_matrix, gamma, alpha=1)$estimate))
+                           , c(n=jobs[i, ]$n, estimator='LTMLE_1.0', estimate=try(LTMLE_estimator(D, Q_hat, V_hat,
+                                                                                                  evaluation_action_matrix, gamma, alpha=1)$estimate),
+                               base_est_id=NA)
                            # , c(n=jobs[i, ]$n, estimator='LTMLE_0.7', estimate=try(LTMLE_estimator(D, Q_hat, V_hat, 
                            #                                                                        evaluation_action_matrix, gamma, alpha=0.7)$estimate))
                            # , c(n=jobs[i, ]$n, estimator='LTMLE_0.5', estimate=try(LTMLE_estimator(D, Q_hat, V_hat, 
@@ -137,6 +139,9 @@ results <- foreach(i=1:nrow(jobs), .combine = rbind,
                            #                                                                       gamma, D_large=NULL, V=3, greedy=F)$estimate) )
                            , c(n=jobs[i, ]$n, estimator='C-TMLE-sftning', estimate=try(C_LTMLE_result$estimate),
                                base_est_id=try(C_LTMLE_result$softening_coeff))
+                           , c(n=jobs[i, ]$n, estimator='1step_LTMLE', estimate=try(one_step_LTMLE(D, Q_hat, V_hat, evaluation_action_matrix, 
+                                                                                                   gamma=gamma, verbose=F, max_it=20, step_size=1e-1)$estimate),
+                               base_est_id=NA)
                            #, c(n=jobs[i, ]$n, estimator='C-TMLE-pnlty', estimate=try(C_LTMLE_penalization(D, Q_hat, V_hat, 
                            #                                                                             evaluation_action_matrix,
                            #                                                                             gamma, V=3, plot_risk=F, greedy=T)$estimate) )
@@ -174,11 +179,11 @@ print(table(base_est_id_df$n, base_est_id_df$base_est_id))
 library(ggplot2)
 MSE_plot <- ggplot(data=MSE_table, aes(x=log10(n), y=log10(n*MSE), color=estimator, shape=estimator)) + 
   scale_shape_manual( values=c('MAGIC'=15,
-                               'C-TMLE-sftning'=15,
+                               'C-TMLE-sftning'=15, '1step_LTMLE'=15,
                                'LTMLE_1.0'=19, 'LTMLE_0.7'=19, 'LTMLE_0.5'=19, 'LTMLE_0.1'=19, 'LTMLE_0.0'=19, 
                                'WDR'=18) ) +
   scale_size_manual( values=c('MAGIC'=8,
-                              'C-TMLE-sftning'=8, 
+                              'C-TMLE-sftning'=8, '1step_LTMLE'=8,
                               'LTMLE_1.0'=4, 'LTMLE_0.7'=4, 'LTMLE_0.5'=4, 'LTMLE_0.1'=4, 'LTMLE_0.0'=4, 
                               'WDR'=4)) +
   geom_line(size=1) + geom_point(aes(size=estimator)) + ggtitle(paste('ModelWin, horizon=', horizon, ', number of draws per point=', nb_repeats))
