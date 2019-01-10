@@ -148,10 +148,10 @@ state_transition_matrix[7, ,] <- rbind(c(0,0,1/4,0,0,1/4,0,1/4,0,0,1/4,0,0,0,0,0
                                        c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0))
 #s8;
 state_transition_matrix[8, ,] <- rbind(c(0,0,0,1/3,0,0,1/3,0,0,0,0,1/3,0,0,0,0),
-                                       c(0,0,0,0,0,0,0,0.7,0,0,0,0.3,0,0,0,0),
-                                       c(0,0,0,0,0,0,0,0.3,0,0,0,0.7,0,0,0,0),
-                                       c(0,0,0,0,0,0,0,0.95,0,0,0,0.05,0,0,0,0),
-                                       c(0,0,0,0,0,0,0,0.05,0,0,0,0.95,0,0,0,0))
+                                       c(0,0,0,0,0,0,0,0.993,0,0,0,0.007,0,0,0,0),
+                                       c(0,0,0,0,0,0,0,0.007,0,0,0,0.993,0,0,0,0),
+                                       c(0,0,0,0,0,0,0,0.998,0,0,0,0.002,0,0,0,0),
+                                       c(0,0,0,0,0,0,0,0.002,0,0,0,0.998,0,0,0,0))
 #s9;
 state_transition_matrix[9, ,] <- rbind(c(0,0,0,0,1/3,0,0,0,0,1/3,0,0,1/3,0,0,0),
                                        c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0),
@@ -284,9 +284,9 @@ evaluation_action_matrix_p5 <-  rbind(c(0, 0, 0, 0.5, 0.5),
 horizon <- 100
 
 MCres_eval_p4 <- MC_direct_evaluation(state_transition_matrix, transition_based_rewards, 
-                                   evaluation_action_matrix=evaluation_action_matrix_p4, horizon, M=5000)
+                                   evaluation_action_matrix=evaluation_action_matrix_p4, horizon, M=10000)
 MCres_eval_p5 <- MC_direct_evaluation(state_transition_matrix, transition_based_rewards, 
-                                      evaluation_action_matrix=evaluation_action_matrix_p5, horizon, M=5000)
+                                      evaluation_action_matrix=evaluation_action_matrix_p5, horizon, M=10000)
 MCres_beha <- MC_direct_evaluation(state_transition_matrix, transition_based_rewards, 
-                                   behavior_action_matrix, horizon, M=5000)
+                                   behavior_action_matrix, horizon, M=10000)
 
