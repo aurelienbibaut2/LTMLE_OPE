@@ -34,10 +34,11 @@ V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
 
 # Specify jobs ------------------------------------------------------------
 library(foreach); library(doParallel)
-nb_repeats <- (parallel::detectCores() - 1) * 1
+nb_repeats <- (parallel::detectCores() - 1) * 2
 # ns <- c(50, 100, 200, 500, 1000, 5000, 10000)
 ns <- c(1000)
 n_ids <- 10
+b0 <- 5e-2
 alphas <- seq(0, 1, length.out = n_ids)
 js <- ceiling(seq(1, horizon, length.out=n_ids))
 jobs <- expand.grid(n = ns, id = 1:n_ids,repeat.id = 1:nb_repeats)
@@ -57,7 +58,7 @@ results <- foreach(i=1:nrow(jobs), .combine = rbind,
                                                         horizon)
                      # Apply bias while respecting model's constraints
                      Q_hat <- array(dim=dim(Q0)); V_hat <- array(dim=dim(V0))
-                     b <- 1e-2 * rnorm(1)
+                     b <- b0 * rnorm(1)
                      Delta_t <- 0
                      for(t in horizon:1){
                        Delta_t <- 1 + gamma * Delta_t
@@ -111,24 +112,8 @@ summary_table <- transform(cbind(MSE_table, var=var_table$var, bias=bias_table$b
                            MSE=round(MSE, 5), var=round(var, 5), bias=round(bias, 5))
 print(summary_table)
 
-MSE_plot <- ggplot(data=MSE_table, aes(x=id, y=log10(n*MSE), color=estimator)) + geom_line() + geom_point() +
-  ggtitle(paste('ModelWin, horizon=', horizon, ', number of draws per point=', nb_repeats))
-
+MSE_plot <- ggplot(data=MSE_table, aes(x=id, y=log10(n*MSE), color=estimator, shape=estimator)) + geom_line() + geom_point(size=5) +
+  ggtitle(paste('ModelWin, horizon=', horizon, ', number of draws per point=', nb_repeats,
+                '\nbias=', b0, '*rnorm(1), n=',ns[1])) +
+  scale_shape_manual( values=c('C-WDR'=19, 'partial_LTMLE'=15, 'softened_LTMLE'=15, 'partial_softened_LTMLE'=18) )
 print(MSE_plot)
-# 
-# # Base estimator id:
-# base_est_id_df <- subset(data.frame(results), subset=estimator=='C-TMLE-sftning' )
-# print(table(base_est_id_df$n, base_est_id_df$base_est_id))
-# # Plot nMSE against n
-# library(ggplot2)
-# MSE_plot <- ggplot(data=MSE_table, aes(x=log10(n), y=log10(n*MSE), color=estimator, shape=estimator)) + 
-#   scale_shape_manual( values=c('MAGIC'=15,
-#                                'C-TMLE-sftning'=15, '1step_LTMLE'=15, 'MAGIC_LTMLE'=15, 'partial_LTMLE_1.0'=15, 'partial_LTMLE_0.3'=15,
-#                                'LTMLE_1.0'=19, 'LTMLE_0.7'=19, 'LTMLE_0.5'=19, 'LTMLE_0.1'=19, 'LTMLE_0.0'=19, 
-#                                'WDR'=18) ) +
-#   scale_size_manual( values=c('MAGIC'=8,
-#                               'C-TMLE-sftning'=8, '1step_LTMLE'=8, 'MAGIC_LTMLE'=8, 'partial_LTMLE_1.0'=8, 'partial_LTMLE_0.3'=8,
-#                               'LTMLE_1.0'=4, 'LTMLE_0.7'=4, 'LTMLE_0.5'=4, 'LTMLE_0.1'=4, 'LTMLE_0.0'=4, 
-#                               'WDR'=4)) +
-#   geom_line(size=1) + geom_point(aes(size=estimator)) + ggtitle(paste('ModelWin, horizon=', horizon, ', number of draws per point=', nb_repeats))
-# print(MSE_plot)

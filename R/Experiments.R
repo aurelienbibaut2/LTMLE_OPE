@@ -26,7 +26,7 @@ source('MDP_modelWin.R')
 # V_hat[3, ] <- 0
 
 # ModelWin parameters
-horizon <- 50; gamma <- 1; n_states <- 3; n_actions <- 2
+horizon <- 20; gamma <- 1; n_states <- 3; n_actions <- 2
 V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
                                   transition_based_rewards,
                                   evaluation_action_matrix, horizon, gamma = gamma)
@@ -34,40 +34,11 @@ V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
 
 # Specify jobs ------------------------------------------------------------
 library(foreach); library(doParallel)
-nb_repeats <- (parallel::detectCores() - 1)  *1
+nb_repeats <- (parallel::detectCores() - 1)  * 2
 # ns <- c(50, 100, 200, 500, 1000, 5000, 10000)
-ns <- c(100, 500, 1000)
+ns <- c(100, 500, 1000, 5000)
+b0 <- 5e-2
 jobs <- expand.grid(n = ns, repeat.id = 1:nb_repeats)
-
-
-# Q-learning of the initial estimator -------------------------------------
-# Generate data
-# Q_hats <- list(); V_hats <- list()
-# for(n in ns){
-#   D <- generate_discrete_MDP_dataset(n, 1, state_transition_matrix,
-#                                      behavior_action_matrix,
-#                                      transition_based_rewards,
-#                                      horizon)
-#   # Fit Q_function
-#   cat('Start Bellman iterations\n')
-#   transitions_dataset <- make_transitions_dataset(D)
-#   Q_learning_results <- bellman_iterations(transitions_dataset, evaluation_action_matrix,
-#                                            gamma=gamma, max_it=100, relative_tol=1e-4, V0=V0[1, ],
-#                                            verbose=T, start_new_plot = (n==ns[1]) )
-#   plot(Q_learning_results$l2_errors)
-#   cat('Done with Bellman iterations\n')
-#   # Replicate accross time points the Bellman iterations based Q-function
-#   # That would be correct under infinite horizon.
-#   # Here's it's only approximately correct. Better for early time points than late time points.
-# 
-#   Q_hat <- array(0, dim=c(horizon, n_states, n_actions)); V_hat <- array(0, dim=c(horizon, n_states))
-#   for(t in 1:horizon){
-#     Q_hat[t, ,] <-  Q_learning_results$Q_hat
-#     V_hat[t, ] <-  Q_learning_results$V_hat
-#   }
-# 
-#   Q_hats[[as.character(n)]] <- Q_hat; V_hats[[as.character(n)]] <- V_hat
-# }
 
 
 # Monte Carlo simulation --------------------------------------------------
@@ -84,7 +55,7 @@ results <- foreach(i=1:nrow(jobs), .combine = rbind,
                                                         horizon)
                      # Apply bias while respecting model's constraints
                      Q_hat <- array(dim=dim(Q0)); V_hat <- array(dim=dim(V0))
-                     b <- 0 * rnorm(1)
+                     b <- b0 * rnorm(1)
                      Delta_t <- 0
                      for(t in horizon:1){
                        Delta_t <- 1 + gamma * Delta_t
@@ -211,5 +182,7 @@ MSE_plot <- ggplot(data=MSE_table, aes(x=log10(n), y=log10(n*MSE), color=estimat
                               'C-TMLE-sftning'=8, '1step_LTMLE'=8, 'MAGIC_LTMLE'=8, 'partial_LTMLE_1.0'=8, 'partial_LTMLE_0.3'=8,
                               'LTMLE_1.0'=4, 'LTMLE_0.7'=4, 'LTMLE_0.5'=4, 'LTMLE_0.1'=4, 'LTMLE_0.0'=4, 
                               'WDR'=4)) +
-  geom_line(size=1) + geom_point(aes(size=estimator)) + ggtitle(paste('ModelWin, horizon=', horizon, ', number of draws per point=', nb_repeats))
+  geom_line(size=1) + geom_point(aes(size=estimator)) + 
+  ggtitle(paste('ModelWin, horizon=', horizon, ', number of draws per point=', nb_repeats,
+                '\nbias=', b0, '*rnorm(1)'))
 print(MSE_plot)

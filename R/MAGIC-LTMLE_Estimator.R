@@ -115,6 +115,3 @@ MAGIC_bootstrap_LTMLE <- function(D, Q_hat, V_hat, gamma, evaluation_action_matr
 #                                    horizon)
 # # res <- MAGIC_bootstrap_LTMLE(D, Q_hat, V_hat, gamma, evaluation_action_matrix, force_PD=T)
 # res <- MAGIC_LTMLE_estimator(D, Q_hat, V_hat, evaluation_action_matrix, gamma, horizon, n_bootstrap=1000, force_PD=T)
-# 
-# 
-# 
