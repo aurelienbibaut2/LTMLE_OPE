@@ -26,7 +26,7 @@ source('MDP_modelWin.R')
 # V_hat[3, ] <- 0
 
 # ModelWin parameters
-horizon <- 10; gamma <- 1; n_states <- 3; n_actions <- 2
+horizon <- 20; gamma <- 1; n_states <- 3; n_actions <- 2
 V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
                                   transition_based_rewards,
                                   evaluation_action_matrix, horizon, gamma = gamma)
@@ -34,7 +34,7 @@ V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
 
 # Specify jobs ------------------------------------------------------------
 library(foreach); library(doParallel)
-nb_repeats <- (parallel::detectCores() - 1)  * 1
+nb_repeats <- (parallel::detectCores() - 1)  * 5
 # ns <- c(50, 100, 200, 500, 1000, 5000, 10000)
 ns <- c(100, 500, 1000)
 jobs <- expand.grid(n = ns, repeat.id = 1:nb_repeats)
@@ -84,7 +84,7 @@ results <- foreach(i=1:nrow(jobs), .combine = rbind,
                                                         horizon)
                      # Apply bias while respecting model's constraints
                      Q_hat <- array(dim=dim(Q0)); V_hat <- array(dim=dim(V0))
-                     b <- 5e-2 * rnorm(1)
+                     b <- 2e-1 * rnorm(1)
                      Delta_t <- 0
                      for(t in horizon:1){
                        Delta_t <- 1 + gamma * Delta_t
@@ -153,9 +153,9 @@ results <- foreach(i=1:nrow(jobs), .combine = rbind,
                            # , c(n=jobs[i, ]$n, estimator='C-TMLE', estimate=try(C_LTMLE_softening(D, Q_hat, V_hat,
                            #                                                                       evaluation_action_matrix,
                            #                                                                       gamma, D_large=NULL, V=3, greedy=F)$estimate) )
-                           , c(n=jobs[i, ]$n, estimator='MAGIC_LTMLE', estimate=try(MAGIC_bootstrap_LTMLE(D, Q_hat, V_hat, gamma,
-                                                                                                          evaluation_action_matrix, force_PD=T)$estimate),
-                               base_est_id=NA, epsilon=NA, score_eq=NA )
+                           # , c(n=jobs[i, ]$n, estimator='MAGIC_LTMLE', estimate=try(MAGIC_bootstrap_LTMLE(D, Q_hat, V_hat, gamma,
+                           #                                                                                evaluation_action_matrix, force_PD=T)$estimate),
+                           #     base_est_id=NA, epsilon=NA, score_eq=NA )
                            , c(n=jobs[i, ]$n, estimator='C-TMLE-sftning', estimate=try(C_LTMLE_result$estimate),
                                base_est_id=try(C_LTMLE_result$softening_coeff), epsilon=NA, score_eq=NA )
                            # , c(n=jobs[i, ]$n, estimator='1step_LTMLE', estimate=try(one_step_result$estimate),
@@ -171,7 +171,7 @@ stopCluster(cl)
 results_df <- transform(as.data.frame(results), 
                         n=as.numeric(as.character(n)),
                         estimate=as.numeric(as.character(estimate)))
-estimators <- c('C-TMLE-sftning', 'MAGIC', 'MAGIC_LTMLE')
+estimators <- c('C-TMLE-sftning', 'MAGIC', 'MAGIC_LTMLE', 'WDR')
 results_df <- subset(results_df, estimator %in% estimators)
 
 results_df$squared_error <- (results_df$estimate - V0[1,1])^2

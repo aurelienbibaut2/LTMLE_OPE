@@ -2,6 +2,7 @@ source('Estimators.R')
 source('penalized_LTMLE.R')
 source('utils.R')
 source('evaluate_EIC.R')
+source('partial_LTMLE.R')
 
 # Collaborative TMLE that uses a sequence of decreasingly softened weights
 C_LTMLE_softening <- function(D, Q_hat, V_hat, evaluation_action_matrix, gamma, V=3, plot_risk=F, D_large=NULL, greedy=T){
@@ -9,13 +10,16 @@ C_LTMLE_softening <- function(D, Q_hat, V_hat, evaluation_action_matrix, gamma, 
   # D_split1 <- D[1:floor(0.5 * n), ,]; D_split2 <- D[(floor(0.5 * n) + 1):n, ,]
   n <- dim(D)[1]
   softening_coeffs <- seq(1e-2, 1, length.out = 10)
+  js <- (ceiling(seq(1, horizon, length.out=10))) 
+  
   CV_doubly_roubust_risks <- rep(Inf, length(softening_coeffs))
   true_risks <- rep(0, length(softening_coeffs))
   for(i in 1:length(softening_coeffs)){
     CV_doubly_roubust_risks[i] <- 0
     for(v in 1:V){
       test_ids <- (floor( (v-1) / V * n) + 1) : floor( v / V * n)
-      epsilons <- LTMLE_estimator(D[setdiff(1:n, test_ids), ,], Q_hat, V_hat, evaluation_action_matrix, gamma, alpha=softening_coeffs[i])$epsilons
+      epsilons <- partial_LTMLE_estimator(D[setdiff(1:n, test_ids), ,], Q_hat, V_hat, evaluation_action_matrix, gamma, 
+                                          alpha=softening_coeffs[i], j=js[i])$epsilons
       CV_doubly_roubust_risks[i] <- (CV_doubly_roubust_risks[i] +
                                        var(evaluate_EIC(D[test_ids, ,], epsilons, Q_hat, V_hat, evaluation_action_matrix, gamma))
                                      )
@@ -36,11 +40,11 @@ C_LTMLE_softening <- function(D, Q_hat, V_hat, evaluation_action_matrix, gamma, 
     }
   }
   # Output the estimate computed on the full dataset that uses the softening coeff that minimizes the CV risk
-  list(estimate=LTMLE_estimator(D, Q_hat, V_hat, evaluation_action_matrix, gamma, 
-                                alpha=softening_coeffs[which.min(CV_doubly_roubust_risks)]
+  list(estimate=partial_LTMLE_estimator(D, Q_hat, V_hat, evaluation_action_matrix, gamma, 
+                                alpha=softening_coeffs[which.min(CV_doubly_roubust_risks)], j=js[which.min(CV_doubly_roubust_risks)]
                                 )$estimate,
-       true_risk_estimate=LTMLE_estimator(D, Q_hat, V_hat, evaluation_action_matrix, gamma, 
-                  alpha=softening_coeffs[which.min(true_risks)]
+       true_risk_estimate=partial_LTMLE_estimator(D, Q_hat, V_hat, evaluation_action_matrix, gamma, 
+                  alpha=softening_coeffs[which.min(true_risks)], j=js[which.min(true_risks)]
                   )$estimate,
        softening_coeff=softening_coeffs[which.min(CV_doubly_roubust_risks)])
 }
