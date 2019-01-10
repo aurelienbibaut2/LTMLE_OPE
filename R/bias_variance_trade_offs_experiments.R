@@ -34,7 +34,7 @@ V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
 
 # Specify jobs ------------------------------------------------------------
 library(foreach); library(doParallel)
-nb_repeats <- (parallel::detectCores() - 1) * 10
+nb_repeats <- (parallel::detectCores() - 1) * 1
 # ns <- c(50, 100, 200, 500, 1000, 5000, 10000)
 ns <- c(1000)
 n_ids <- 10
@@ -57,7 +57,7 @@ results <- foreach(i=1:nrow(jobs), .combine = rbind,
                                                         horizon)
                      # Apply bias while respecting model's constraints
                      Q_hat <- array(dim=dim(Q0)); V_hat <- array(dim=dim(V0))
-                     b <- 2e-1 * rnorm(1)
+                     b <- 1e-2 * rnorm(1)
                      Delta_t <- 0
                      for(t in horizon:1){
                        Delta_t <- 1 + gamma * Delta_t
@@ -68,11 +68,21 @@ results <- foreach(i=1:nrow(jobs), .combine = rbind,
                      
                      rbind(c(n=jobs[i, ]$n, id=jobs[i, ]$id, estimator='WDR',
                              estimate=WDR_estimator_TB_old(D, Q_hat, V_hat, gamma=1, j=js[jobs[i, ]$id])),
-                           
+                          
                            c(n=jobs[i, ]$n, id=jobs[i, ]$id, estimator='partial_LTMLE',
                              estimate=partial_LTMLE_estimator(D, Q_hat, V_hat,
                                                               evaluation_action_matrix, gamma,
-                                                              alpha=alphas[jobs[i, ]$id], js[jobs[i, ]$id])$estimate)
+                                                              alpha=1, j=js[jobs[i, ]$id])$estimate),
+                           
+                           c(n=jobs[i, ]$n, id=jobs[i, ]$id, estimator='partial_softened_LTMLE',
+                             estimate=partial_LTMLE_estimator(D, Q_hat, V_hat,
+                                                              evaluation_action_matrix, gamma,
+                                                              alpha=alphas[jobs[i, ]$id], j=js[jobs[i, ]$id])$estimate),
+                           
+                           c(n=jobs[i, ]$n, id=jobs[i, ]$id, estimator='softened_LTMLE',
+                             estimate=partial_LTMLE_estimator(D, Q_hat, V_hat,
+                                                              evaluation_action_matrix, gamma,
+                                                              alpha=alphas[jobs[i, ]$id], j=horizon)$estimate)
                            )
                    }
 stopCluster(cl)
@@ -101,7 +111,9 @@ summary_table <- transform(cbind(MSE_table, var=var_table$var, bias=bias_table$b
                            MSE=round(MSE, 5), var=round(var, 5), bias=round(bias, 5))
 print(summary_table)
 
-MSE_plot <- ggplot(data=MSE_table, aes(x=id, y=log10(n*MSE), color=estimator)) + geom_line() + geom_point()
+MSE_plot <- ggplot(data=MSE_table, aes(x=id, y=log10(n*MSE), color=estimator)) + geom_line() + geom_point() +
+  ggtitle(paste('ModelWin, horizon=', horizon, ', number of draws per point=', nb_repeats))
+
 print(MSE_plot)
 # 
 # # Base estimator id:
