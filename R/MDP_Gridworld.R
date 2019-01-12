@@ -75,13 +75,13 @@ compute_true_V_and_Q <- function(state_transition_matrix,
                                  evaluation_action_matrix, horizon, gamma=1){
   # True value-to-go under policy pi
   # Compute the true value-to-go under pi with dynamic programming
-  state_transition_tensor <- as.tensor(state_transition_matrix, dims=c(s=16, a=3, new_s=16))
+  state_transition_tensor <- as.tensor(state_transition_matrix, dims=c(s=16, a=2, new_s=16))
   rewards_tensor <- as.tensor(transition_based_rewards, dims=c(s=16, new_s=16))
-  pi_tensor <- as.tensor(evaluation_action_matrix, dims=c(s=16, a=3))
+  pi_tensor <- as.tensor(evaluation_action_matrix, dims=c(s=16, a=2))
   ER <- reorder(mul.tensor(state_transition_tensor, i='new_s', 
                            rewards_tensor, j='new_s', by=c('s', 'a')), i='s') # expected reward given s and a
   V0 <- matrix(NA, nrow=horizon, ncol=16) # matrix of values to go: s X t
-  Q0 <- array(NA, dim=c(horizon, 16, 3))
+  Q0 <- array(NA, dim=c(horizon, 16, 2))
   Q0[horizon, ,] <- ER
   V0[horizon, ] <- mul.tensor(ER, i='a', pi_tensor, j='a', by='s')
   for(t in (horizon-1):1){
@@ -143,81 +143,81 @@ MC_direct_evaluation <- function(state_transition_matrix,
 # GridWorld environment specification 
 # Define MDP transition matrices
 # State transition matrix dimensions: current state x action x next state
-state_transition_matrix <- array(data=NA, dim=c(16, 3, 16))
+state_transition_matrix <- array(data=NA, dim=c(16, 2, 16))
 #s1;
 state_transition_matrix[1, ,] <- rbind(c(0,1/2,0,0,1/2,0,0,0,0,0,0,0,0,0,0,0),
                                        #c(0,1/4,0,0,1/4,0,0,0,0,0,0,0,0,0,0,0),
-                                       c(0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0),
+                                       #c(0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0),
                                        c(0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0))
 #s2;
 state_transition_matrix[2, ,] <- rbind(c(1/3,0,1/3,0,0,1/3,0,0,0,0,0,0,0,0,0,0),
                                        #c(1/4,0,1/4,0,0,1/4,0,0,0,0,0,0,0,0,0,0),
-                                       c(0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0),
+                                       #c(0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0),
                                        c(0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0))
 #s3;
 state_transition_matrix[3, ,] <- rbind(c(0,1/3,0,1/3,0,0,1/3,0,0,0,0,0,0,0,0,0),
                                        #c(0,1/4,0,1/4,0,0,1/4,0,0,0,0,0,0,0,0,0),
-                                       c(0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0),
+                                       #c(0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0),
                                        c(0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0))
 #s4;
 state_transition_matrix[4, ,] <- rbind(c(0,0,1/2,0,0,0,0,1/2,0,0,0,0,0,0,0,0),
                                        #c(0,0,1/4,0,0,0,0,1/4,0,0,0,0,0,0,0,0),
-                                       c(0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0),
+                                       #c(0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0),
                                        c(0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0))
 #s5;
 state_transition_matrix[5, ,] <- rbind(c(1/3,0,0,0,0,1/3,0,0,1/3,0,0,0,0,0,0,0),
                                        #c(1/4,0,0,0,0,1/4,0,0,1/4,0,0,0,0,0,0,0),
-                                       c(1/3,0,0,0,0,1/3,0,0,1/3,0,0,0,0,0,0,0),
+                                       #c(1/3,0,0,0,0,1/3,0,0,1/3,0,0,0,0,0,0,0),
                                        c(1/3,0,0,0,0,1/3,0,0,1/3,0,0,0,0,0,0,0))
 #s6;
 state_transition_matrix[6, ,] <- rbind(c(0,1/4,0,0,1/4,0,1/4,0,0,1/4,0,0,0,0,0,0),
-                                       c(0,1/4,0,0,1/4,0,1/4,0,0,1/4,0,0,0,0,0,0),
+                                       #c(0,1/4,0,0,1/4,0,1/4,0,0,1/4,0,0,0,0,0,0),
                                        c(0,1/4,0,0,1/4,0,1/4,0,0,1/4,0,0,0,0,0,0))
 #s7;
 state_transition_matrix[7, ,] <- rbind(c(0,0,1/4,0,0,1/4,0,1/4,0,0,1/4,0,0,0,0,0),
-                                       c(0,0,1/4,0,0,1/4,0,1/4,0,0,1/4,0,0,0,0,0),
+                                       #c(0,0,1/4,0,0,1/4,0,1/4,0,0,1/4,0,0,0,0,0),
                                        c(0,0,1/4,0,0,1/4,0,1/4,0,0,1/4,0,0,0,0,0))
 #s8;
 state_transition_matrix[8, ,] <- rbind(c(0,0,0,1/3,0,0,1/3,0,0,0,0,1/3,0,0,0,0),
                                        #c(0,0,0,1/4,0,0,1/4,0,0,0,0,1/4,0,0,0,0),
-                                       c(0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0),
+                                       #c(0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0),
                                        c(0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0))
 #s9;
 state_transition_matrix[9, ,] <- rbind(c(0,0,0,0,1/3,0,0,0,0,1/3,0,0,1/3,0,0,0),
                                        #c(0,0,0,0,1/4,0,0,0,0,1/4,0,0,1/4,0,0,0),
-                                       c(0,0,0,0,1/3,0,0,0,0,1/3,0,0,1/3,0,0,0),
+                                       #c(0,0,0,0,1/3,0,0,0,0,1/3,0,0,1/3,0,0,0),
                                        c(0,0,0,0,1/3,0,0,0,0,1/3,0,0,1/3,0,0,0))
 #s10;
 state_transition_matrix[10, ,] <- rbind(c(0,0,0,0,0,1/4,0,0,1/4,0,1/4,0,0,1/4,0,0),
-                                        c(0,0,0,0,0,1/4,0,0,1/4,0,1/4,0,0,1/4,0,0),
+                                        #c(0,0,0,0,0,1/4,0,0,1/4,0,1/4,0,0,1/4,0,0),
                                         c(0,0,0,0,0,1/4,0,0,1/4,0,1/4,0,0,1/4,0,0))
 #s11;
 state_transition_matrix[11, ,] <- rbind(c(0,0,0,0,0,0,1/4,0,0,1/4,0,1/4,0,0,1/4,0),
-                                        c(0,0,0,0,0,0,1/4,0,0,1/4,0,1/4,0,0,1/4,0),
+                                        #c(0,0,0,0,0,0,1/4,0,0,1/4,0,1/4,0,0,1/4,0),
                                         c(0,0,0,0,0,0,1/4,0,0,1/4,0,1/4,0,0,1/4,0))
 #s12;
 state_transition_matrix[12, ,] <- rbind(c(0,0,0,0,0,0,0,1/3,0,0,1/3,0,0,0,0,1/3),
                                         #c(0,0,0,0,0,0,0,1/4,0,0,1/4,0,0,0,0,1/4),
-                                        c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1),
+                                        #c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1),
                                         c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1))
 #s13;
 state_transition_matrix[13, ,] <- rbind(c(0,0,0,0,0,0,0,0,1/2,0,0,0,0,1/2,0,0),
                                         #c(0,0,0,0,0,0,0,0,1/4,0,0,0,0,1/4,0,0),
-                                        c(0,0,0,0,0,0,0,0,1/2,0,0,0,0,1/2,0,0),
+                                        #c(0,0,0,0,0,0,0,0,1/2,0,0,0,0,1/2,0,0),
                                         c(0,0,0,0,0,0,0,0,1/2,0,0,0,0,1/2,0,0))
 #s14;
 state_transition_matrix[14, ,] <- rbind(c(0,0,0,0,0,0,0,0,0,1/3,0,0,1/3,0,1/3,0),
                                         #c(0,0,0,0,0,0,0,0,0,1/4,0,0,1/4,0,1/4,0),
-                                        c(0,0,0,0,0,0,0,0,0,1/3,0,0,1/3,0,1/3,0),
+                                        #c(0,0,0,0,0,0,0,0,0,1/3,0,0,1/3,0,1/3,0),
                                         c(0,0,0,0,0,0,0,0,0,1/3,0,0,1/3,0,1/3,0))
 #s15;
 state_transition_matrix[15, ,] <- rbind(c(0,0,0,0,0,0,0,0,0,0,1/3,0,0,1/3,0,1/3),
                                         #c(0,0,0,0,0,0,0,0,0,0,1/4,0,0,1/4,0,1/4),  
-                                        c(0,0,0,0,0,0,0,0,0,0,1/3,0,0,1/3,0,1/3),
+                                        #c(0,0,0,0,0,0,0,0,0,0,1/3,0,0,1/3,0,1/3),
                                         c(0,0,0,0,0,0,0,0,0,0,1/3,0,0,1/3,0,1/3))
 #s16;
 state_transition_matrix[16, ,] <- rbind(c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0),
-                                        c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0),
+                                        #c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0),
                                         c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0))
 
 # In GridWorld, the reward is a deterministic function of the transition.
@@ -244,76 +244,73 @@ transition_based_rewards <- rbind(c(-1, -1, -1, -1, -1, -10, -1, 1, -1, -1, -1, 
 #In the gridworld problem, the behavior policy randomly selects actions with equal probability regardless of which
 #state it is in.  This results in an expected return of approximately −72.377.
 #This policy selects each of the four actions with probability 0.25, regardless of the observation.
-behavior_action_matrix<-  rbind(c(1, 0, 0),
-                                c(1, 0, 0),
-                                c(1, 0, 0),
-                                c(1, 0, 0),
-                                c(1, 0, 0),
-                                c(1, 0, 0),
-                                c(1, 0, 0),
-                                c(1, 0, 0),
-                                c(1, 0, 0),
-                                c(1, 0, 0),
-                                c(1, 0, 0),
-                                c(1, 0, 0),
-                                c(1, 0, 0),
-                                c(1, 0, 0),
-                                c(1, 0, 0),
-                                c(1, 0, 0))
+behavior_action_matrix<-  rbind(c(0.996, 0.004),
+                                c(0.996, 0.004),
+                                c(0.996, 0.004),
+                                c(0.996, 0.004),
+                                c(1/2, 1/2),
+                                c(1/2, 1/2),
+                                c(1/2, 1/2),
+                                c(0.996, 0.004),
+                                c(1/2, 1/2),
+                                c(1/2, 1/2),
+                                c(1/2, 1/2),
+                                c(0.996, 0.004),
+                                c(1/2, 1/2),
+                                c(1/2, 1/2),
+                                c(1/2, 1/2),
+                                c(1/2, 1/2))
 #The evaluation policy is a significantly better policy, although it is still far from optimal (it learns
 #to reach the goal while avoiding the large penalty, but it  does not remain in the position (2,4) very long.
-evaluation_action_matrix_p4 <-  rbind(c(0.012, 0.988, 0),
-                                      c(0.012, 0.988, 0),
-                                      c(0.012, 0.988, 0),
-                                      c(0.012, 0.988, 0),
-                                      c(1/3, 1/3, 1/3),
-                                      c(1/3, 1/3, 1/3),
-                                      c(1/3, 1/3, 1/3),
-                                      c(0.012, 0.988, 0),
-                                      c(1/3, 1/3, 1/3),
-                                      c(1/3, 1/3, 1/3),
-                                      c(1/3, 1/3, 1/3),
-                                      c(0.012, 0.988, 0),
-                                      c(1/3, 1/3, 1/3),
-                                      c(1/3, 1/3, 1/3),
-                                      c(1/3, 1/3, 1/3),
-                                      c(1/3, 1/3, 1/3))
+evaluation_action_matrix_p4 <-  rbind(c(0.012, 0.988),
+                                      c(0.012, 0.988),
+                                      c(0.012, 0.988),
+                                      c(0.012, 0.988),
+                                      c(1/2, 1/2),
+                                      c(1/2, 1/2),
+                                      c(1/2, 1/2),
+                                      c(0.012, 0.988),
+                                      c(1/2, 1/2),
+                                      c(1/2, 1/2),
+                                      c(1/2, 1/2),
+                                      c(0.012, 0.988),
+                                      c(1/2, 1/2),
+                                      c(1/2, 1/2),
+                                      c(1/2, 1/2),
+                                      c(1/2, 1/2))
 
 #This policy is a hand coded near-optimal policy that moves quickly to the position s8 without hitting s6.  
 #It then usually takes the action to move down, and occasionally takes the action to move right.  
 #Once it is in s8, it moves ALMOST deterministically to s16. (near-optimal, pi5) 
-evaluation_action_matrix_p5 <-  rbind(c(0.004, 0, 0.996),
-                                      c(0.004, 0, 0.996),
-                                      c(0.004, 0, 0.996),
-                                      c(0.004, 0, 0.996),
-                                      c(1/3, 1/3, 1/3),
-                                      c(1/3, 1/3, 1/3),
-                                      c(1/3, 1/3, 1/3),
-                                      c(0.004, 0, 0.996),
-                                      c(1/3, 1/3, 1/3),
-                                      c(1/3, 1/3, 1/3),
-                                      c(1/3, 1/3, 1/3),
-                                      c(0.004, 0, 0.996),
-                                      c(1/3, 1/3, 1/3),
-                                      c(1/3, 1/3, 1/3),
-                                      c(1/3, 1/3, 1/3),
-                                      c(1/3, 1/3, 1/3))
+evaluation_action_matrix_p5 <-  rbind(c(0.004,0.996),
+                                      c(0.004, 0.996),
+                                      c(0.004, 0.996),
+                                      c(0.004, 0.996),
+                                      c(1/2, 1/2),
+                                      c(1/2, 1/2),
+                                      c(1/2, 1/2),
+                                      c(0.004, 0.996),
+                                      c(1/2, 1/2),
+                                      c(1/2, 1/2),
+                                      c(1/2, 1/2),
+                                      c(0.004, 0.996),
+                                      c(1/2, 1/2),
+                                      c(1/2, 1/2),
+                                      c(1/2, 1/2),
+                                      c(1/2, 1/2))
 
 #Check V0 and Q0:
 horizon <- 100
 
-MCres_eval_p4 <- MC_direct_evaluation(state_transition_matrix, transition_based_rewards, 
-                                      evaluation_action_matrix=evaluation_action_matrix_p4, horizon, M=10000)
-MCres_eval_p5 <- MC_direct_evaluation(state_transition_matrix, transition_based_rewards, 
-                                      evaluation_action_matrix=evaluation_action_matrix_p5, horizon, M=10000)
-MCres_beha <- MC_direct_evaluation(state_transition_matrix, transition_based_rewards, 
-                                   behavior_action_matrix, horizon, M=10000)
+#MCres_eval_p4 <- MC_direct_evaluation(state_transition_matrix, transition_based_rewards,evaluation_action_matrix=evaluation_action_matrix_p4, horizon, M=10000)
+#MCres_eval_p5 <- MC_direct_evaluation(state_transition_matrix, transition_based_rewards,evaluation_action_matrix=evaluation_action_matrix_p5, horizon, M=10000)
+#MCres_beha <- MC_direct_evaluation(state_transition_matrix, transition_based_rewards, behavior_action_matrix, horizon, M=10000)
 
 V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,transition_based_rewards,
                     evaluation_action_matrix=evaluation_action_matrix_p5, horizon, gamma=1)
 
-V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,transition_based_rewards,
-                                  evaluation_action_matrix=evaluation_action_matrix_p4, horizon, gamma=1)
+#V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,transition_based_rewards,
+#                                  evaluation_action_matrix=evaluation_action_matrix_p4, horizon, gamma=1)
 
 V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,transition_based_rewards,
                                   evaluation_action_matrix=behavior_action_matrix, horizon, gamma=1)
