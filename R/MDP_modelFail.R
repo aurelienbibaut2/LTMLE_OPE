@@ -124,13 +124,13 @@ MC_direct_evaluation <- function(state_transition_matrix,
 # State transition matrix dimensions: current state x action x next state
 state_transition_matrix <- array(data=NA, dim=c(4, 2, 4))
 state_transition_matrix[, , 1] <- cbind(c(0, 0, 0, 0),
-                                       c(0, 0, 0, 0))
+                                        c(0, 0, 0, 0))
 state_transition_matrix[, , 2] <- cbind(c(1, 0, 0, 0),
-                                       c(0, 0, 0, 0))
+                                        c(0, 0, 0, 0))
 state_transition_matrix[, , 3] <- cbind(c(0, 0, 0, 0),
-                                       c(1, 0, 0, 0))
+                                        c(1, 0, 0, 0))
 state_transition_matrix[, , 4] <- cbind(c(0, 1, 0, 1),
-                                       c(0, 0, 1, 1))
+                                        c(0, 0, 1, 1))
 # Rewards:
 transition_based_rewards <- cbind(c(0, 0, 0, 0),
                                   c(0, 0, 0, 0),
@@ -158,4 +158,3 @@ MCres_eval <- MC_direct_evaluation(state_transition_matrix, transition_based_rew
                                    evaluation_action_matrix, horizon, M=1000)
 MCres_beha <- MC_direct_evaluation(state_transition_matrix, transition_based_rewards, 
                                    behavior_action_matrix, horizon, M=1000)
-

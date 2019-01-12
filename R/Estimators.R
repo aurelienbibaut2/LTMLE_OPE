@@ -1,3 +1,5 @@
+source('utils.R')
+
 AM_estimator <- function(D, V_hat, d_hat=NA, t){ # Thomas and Brunskill's Formula for Approximate Model pg.4
   #Use data to get the estimate of d and V_hat
   if(is.na(d_hat)){
@@ -93,6 +95,32 @@ WDR_estimator_TB_old <- function(D, Q_hat, V_hat, gamma=1, j=NULL){
   mean(V_hat[1, D[, 1, 's']] + apply(D_star, 1, sum))
 }
 
+WDR_estimator_TB_softened <- function(D, Q_hat, V_hat, gamma=1, alpha=1, j=NULL){ 
+  n <- dim(D)[1]
+  horizon <- dim(D)[2]
+  if(is.null(j)) j <- horizon
+  D_star <- matrix(NA, nrow=n, ncol=j)
+  # Compute mean rho_t to be used as denominator in the stabilized weights
+  
+  # D_star below is computed slightly differently whether t=horizon or t <= horizon-1
+  # The reason is that V_hat[horizon+1, s] is zero in reality for every s, but the
+  # row V_hat[horizon+1, ] does not exist in the V_hat passed as argument 
+  # (there is no need to have a row for V_hat[horizon+1, ] as we know it's zero.
+  if(j == horizon){
+    t <- j
+    D_star[, t] <- gamma^t * soften(D[, t, 'rho_t'], alpha) * (D[, t, 'r'] + 
+                                                                 - apply(D[, t, ], 1, function(x) Q_hat[t, x['s'], x['a']]))
+  }
+  
+  if(j > 0){
+    for(t in (min(horizon-1, j)):1){
+      D_star[, t] <- gamma^t * soften(D[, t, 'rho_t'], alpha) * (D[, t, 'r'] + gamma * V_hat[t+1, D[, t+1, 's']]
+                                                                 - apply(D[, t, ], 1, function(x) Q_hat[t, x['s'], x['a']]))
+    }
+  }
+  mean(V_hat[1, D[, 1, 's']] + apply(D_star, 1, sum))
+}
+
 # This version computes the sequence of g^(j) up till the given j and 
 # also the empirical covariance matrix between the g^(j)'s.
 WDR_estimator_TB <- function(D, Q_hat, V_hat, gamma=1, j=NULL, compute_covariance=F){ 
@@ -139,15 +167,7 @@ WDR_estimator_TB <- function(D, Q_hat, V_hat, gamma=1, j=NULL, compute_covarianc
   list(g_js=g_js, Omega_n=Omega_n)
 }
 
-# Two helper functions
-# Expit and logit
-expit <- function(x) { 1 / (1 + exp(-x)) } 
-logit <- function(x) { log(x / (1 - x)) }
 
-# Soften weights
-soften <- function(a, alpha){
-  a^alpha / sum(a^alpha) 
-}
 
 # LTMLE
 LTMLE_estimator <-  function(D, Q_hat, V_hat, evaluation_action_matrix, gamma=1, alpha){
@@ -155,7 +175,7 @@ LTMLE_estimator <-  function(D, Q_hat, V_hat, evaluation_action_matrix, gamma=1,
   n <- dim(D)[1]
   horizon <- dim(D)[2]
   
-  epsilons <- c()
+  epsilons <- rep(0, horizon)
   Delta_t <- 0
   V_evaluated <- rep(0, n) #V_{t+1}(S_{t+1})
   for(t in horizon:1){
@@ -164,11 +184,12 @@ LTMLE_estimator <-  function(D, Q_hat, V_hat, evaluation_action_matrix, gamma=1,
     U_tilde <- (R + gamma * V_evaluated + Delta_t) / (2 * Delta_t) # U_tilde = R_tilde_t + gamma*V_tilde_{t+1}(S_t) in the notations of the write-up
     Q_t_evaluated <- apply(D[ , t, ], 1, function(x) Q_hat[t, x['s'], x['a']]) # Q_t(A_t, S_t)
     Q_tilde_t_evaluated <- (Q_t_evaluated + Delta_t) / (2 * Delta_t)
-    epsilon <- glm(U_tilde ~ offset(logit(Q_tilde_t_evaluated)) + 1, 
-                   family=quasibinomial, weights = soften(D[,t, 'rho_t'], alpha) )$coefficients[1]
-    epsilons <- c(epsilons, epsilon)
+    # Targeting step
+    epsilons[t] <- glm(U_tilde ~ offset(logit(Q_tilde_t_evaluated)) + 1, 
+                       family=quasibinomial, weights = soften(D[,t, 'rho_t'], alpha) )$coefficients[1]
     # Evaluate Q_tilde(s_t, a) for a_t = 1, a_t = 2
-    Q_tilde_t_star <- expit(logit((Q_hat[t, ,] + Delta_t) / (2 * Delta_t)) + epsilon) # Q_tilde_t^*
+    Q_tilde_t_star <- expit( logit( (Q_hat[t, , ] + Delta_t) / (2 * Delta_t)  )
+                             + epsilons[t]) # Q_tilde_t^*
     # Then set V_tilde(s_t) = \sum_{a} Q_tilde(s_t, a) pi_a(a|s_t)
     V_tilde <- apply(Q_tilde_t_star * evaluation_action_matrix, 1, sum)
     # Compute V = 2 * Delta_t * (V_tilde - 1)
@@ -179,6 +200,7 @@ LTMLE_estimator <-  function(D, Q_hat, V_hat, evaluation_action_matrix, gamma=1,
   }
   # The average of the last V is the LTML estimator of the value
   V_hat_LTMLE <- mean(V_evaluated)
+  list(estimate=V_hat_LTMLE, epsilons=epsilons)
 }
 
 ## MAGIC v1, outdated
