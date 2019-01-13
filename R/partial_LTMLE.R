@@ -4,18 +4,16 @@ partial_LTMLE_estimator <-  function(D, Q_hat, V_hat, evaluation_action_matrix, 
   horizon <- dim(D)[2]
   
   epsilons <- rep(0, horizon)
-  
-  #Address issue with GridWorld
-  if(max(D[, , 'r']) > 1){
-    Delta_t <- 0 + max(D[, , 'r'])
-  }else{
-    Delta_t <- 0
-  }
-  
+  Delta_t <- 0
   V_evaluated <- rep(0, n) #V_{t+1}(S_{t+1})
+  
   for(t in horizon:1){
     R <- D[, t, 'r'] # R_t
-    Delta_t <- 1 + gamma * Delta_t
+    
+    #Address issue with GridWorld
+    #max(D[, , 'r']) > 1
+    Delta_t <- max(D[, , 'r']) + gamma * Delta_t
+
     U_tilde <- (R + gamma * V_evaluated + Delta_t) / (2 * Delta_t) # U_tilde = R_tilde_t + gamma*V_tilde_{t+1}(S_t) in the notations of the write-up
     Q_t_evaluated <- apply(D[ , t, ], 1, function(x) Q_hat[t, x['s'], x['a']]) # Q_t(A_t, S_t)
     Q_tilde_t_evaluated <- (Q_t_evaluated + Delta_t) / (2 * Delta_t)

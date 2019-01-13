@@ -260,6 +260,7 @@ behavior_action_matrix<-  rbind(c(0.996, 0.004),
                                 c(1/2, 1/2),
                                 c(1/2, 1/2),
                                 c(1/2, 1/2))
+
 #The evaluation policy is a significantly better policy, although it is still far from optimal (it learns
 #to reach the goal while avoiding the large penalty, but it  does not remain in the position (2,4) very long.
 evaluation_action_matrix_p4 <-  rbind(c(0.012, 0.988),
