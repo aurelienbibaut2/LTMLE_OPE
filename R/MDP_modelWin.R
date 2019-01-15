@@ -137,9 +137,9 @@ transition_based_rewards <- rbind(c(0, 1, -1),
                                   c(0, 0, 0),
                                   c(0, 0, 0))
 # Define behavior (logging) policy: s x a
-behavior_action_matrix <- rbind(c(0.73, 0.27),
+behavior_action_matrix <- rbind(c(0.99, 0.01),
                                 c(0.5, 0.5),
                                 c(0.5, 0.5))
-evaluation_action_matrix <-  rbind(c(0.27, 0.73),
+evaluation_action_matrix <-  rbind(c(0.01, 0.99),
                                    c(0.5, 0.5),
                                    c(0.5, 0.5))

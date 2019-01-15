@@ -108,13 +108,13 @@ WDR_estimator_TB_softened <- function(D, Q_hat, V_hat, gamma=1, alpha=1, j=NULL)
   # (there is no need to have a row for V_hat[horizon+1, ] as we know it's zero.
   if(j == horizon){
     t <- j
-    D_star[, t] <- gamma^t * soften(D[, t, 'rho_t'], alpha) * (D[, t, 'r'] + 
+    D_star[, t] <- gamma^t * n * soften(D[, t, 'rho_t'], alpha) * (D[, t, 'r'] + 
                                                                  - apply(D[, t, ], 1, function(x) Q_hat[t, x['s'], x['a']]))
   }
   
   if(j > 0){
     for(t in (min(horizon-1, j)):1){
-      D_star[, t] <- gamma^t * soften(D[, t, 'rho_t'], alpha) * (D[, t, 'r'] + gamma * V_hat[t+1, D[, t+1, 's']]
+      D_star[, t] <- gamma^t * n * soften(D[, t, 'rho_t'], alpha) * (D[, t, 'r'] + gamma * V_hat[t+1, D[, t+1, 's']]
                                                                  - apply(D[, t, ], 1, function(x) Q_hat[t, x['s'], x['a']]))
     }
   }
