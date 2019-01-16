@@ -1,4 +1,5 @@
 library(tensorA)
+library(ggplot2)
 # library(here)
 # source(here("R/MDP_modelWin.R"))
 # source(here("R/Estimators.R"))
@@ -36,7 +37,7 @@ V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
 library(foreach); library(doParallel)
 nb_repeats <- (parallel::detectCores() - 1) * 2
 # ns <- c(50, 100, 200, 500, 1000, 5000, 10000)
-ns <- c(1000)
+ns <- c(100)
 n_ids <- 10
 b0 <- 5e-2
 alphas <- seq(0, 1, length.out = n_ids)
@@ -69,7 +70,14 @@ results <- foreach(i=1:nrow(jobs), .combine = rbind,
                      
                      rbind(c(n=jobs[i, ]$n, id=jobs[i, ]$id, estimator='WDR',
                              estimate=WDR_estimator_TB_old(D, Q_hat, V_hat, gamma=1, j=js[jobs[i, ]$id])),
-                          
+                           
+                           c(n=jobs[i, ]$n, id=jobs[i, ]$id, estimator='softened_WDR',
+                             estimate=WDR_estimator_TB_softened(D, Q_hat, V_hat, gamma=1, alpha=alphas[jobs[i, ]$id], j=horizon)),
+                           
+                           c(n=jobs[i, ]$n, id=jobs[i, ]$id, estimator='partial_softened_WDR',
+                             estimate=WDR_estimator_TB_softened(D, Q_hat, V_hat, gamma=1,
+                                                                alpha=alphas[jobs[i, ]$id], j=js[jobs[i, ]$id])),
+                           
                            c(n=jobs[i, ]$n, id=jobs[i, ]$id, estimator='partial_LTMLE',
                              estimate=partial_LTMLE_estimator(D, Q_hat, V_hat,
                                                               evaluation_action_matrix, gamma,
@@ -84,7 +92,7 @@ results <- foreach(i=1:nrow(jobs), .combine = rbind,
                              estimate=partial_LTMLE_estimator(D, Q_hat, V_hat,
                                                               evaluation_action_matrix, gamma,
                                                               alpha=alphas[jobs[i, ]$id], j=horizon)$estimate)
-                           )
+                     )
                    }
 stopCluster(cl)
 # Compute MSE from results matrix
@@ -115,5 +123,6 @@ print(summary_table)
 MSE_plot <- ggplot(data=MSE_table, aes(x=id, y=log10(n*MSE), color=estimator, shape=estimator)) + geom_line() + geom_point(size=5) +
   ggtitle(paste('ModelWin, horizon=', horizon, ', number of draws per point=', nb_repeats,
                 '\nbias=', b0, '*rnorm(1), n=',ns[1])) +
-  scale_shape_manual( values=c('C-WDR'=19, 'partial_LTMLE'=15, 'softened_LTMLE'=15, 'partial_softened_LTMLE'=18) )
+  scale_shape_manual( values=c('WDR'=19, 'softened_WDR'=19, 'partial_softened_WDR'=19, 
+                               'partial_LTMLE'=15, 'softened_LTMLE'=15, 'partial_softened_LTMLE'=15) )
 print(MSE_plot)
