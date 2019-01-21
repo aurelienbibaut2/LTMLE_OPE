@@ -37,16 +37,16 @@ V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
 library(foreach); library(doParallel)
 nb_repeats <- (parallel::detectCores() - 1) * 2
 # ns <- c(50, 100, 200, 500, 1000, 5000, 10000)
-ns <- c(1000)
+ns <- c(100)
 n_ids <- 10
-b0 <- 5e-2
+b0 <- 5e-3
 alphas <- seq(0, 1, length.out = n_ids)
 lambdas <- rev(seq(0, 1e-4, length.out = n_ids))
 js <- ceiling(seq(1, horizon, length.out=n_ids))
 jobs <- expand.grid(n = ns, id = 1:n_ids,repeat.id = 1:nb_repeats)
 
 alphas_bis <- c(rep(0, n_ids/2), seq(0, 1, length.out = n_ids/2))
-lambdas_bis <- c(rev(seq(0, 1e-5, length.out = n_ids/2)), rep(0, n_ids/2))
+lambdas_bis <- c(rev(seq(0, 5e-5, length.out = n_ids/2)), rep(0, n_ids/2))
 
 # Monte Carlo simulation --------------------------------------------------
 cat(detectCores(), 'cores detected\n')
