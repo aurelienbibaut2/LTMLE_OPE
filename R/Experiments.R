@@ -8,6 +8,7 @@ source('Magic_estimator.R')
 source('Q_learning_discrete_state_space.R')
 source('penalized_LTMLE.R')
 source('MAGIC-LTMLE_Estimator.R')
+source('MAGIC_full_library.R')
 source('single_epsilon_LTMLE.R')
 source('partial_LTMLE.R')
 source('MDP_modelWin.R')
@@ -26,7 +27,7 @@ source('MDP_modelWin.R')
 # V_hat[3, ] <- 0
 
 # ModelWin parameters
-horizon <- 20; gamma <- 1; n_states <- 3; n_actions <- 2
+horizon <- 10; gamma <- 1; n_states <- 3; n_actions <- 2
 V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
                                   transition_based_rewards,
                                   evaluation_action_matrix, horizon, gamma = gamma)
@@ -36,7 +37,7 @@ V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
 library(foreach); library(doParallel)
 nb_repeats <- (parallel::detectCores() - 1)  * 2
 # ns <- c(50, 100, 200, 500, 1000, 5000, 10000)
-ns <- c(100, 500, 1000, 5000)
+ns <- c(100, 500, 1000, 2000)
 b0 <- 5e-2
 jobs <- expand.grid(n = ns, repeat.id = 1:nb_repeats)
 
@@ -98,6 +99,10 @@ results <- foreach(i=1:nrow(jobs), .combine = rbind,
                                                                                                           gamma, horizon, n_bootstrap=1000, 
                                                                                                           force_PD=T)$estimate),
                                base_est_id=NA, epsilon=NA, score_eq=NA)
+                           , c(n=jobs[i, ]$n, estimator='MAGIC_full_library', estimate=try(MAGIC_full_library_estimator(D, Q_hat, V_hat, evaluation_action_matrix, 
+                                                                                                                 gamma, horizon, n_bootstrap=1000, 
+                                                                                                                 force_PD=T)$estimate),
+                               base_est_id=NA, epsilon=NA, score_eq=NA)
                            # , c(n=jobs[i, ]$n, estimator='MAGIC-LTMLE', estimate=try(MAGIC_LTMLE_estimator_hacky(D, Q_hat, V_hat, evaluation_action_matrix, 
                            #                                                          gamma, n_bootstrap=1000) ))
                            # , c(n=jobs[i, ]$n, estimator='LTMLE_1.0', estimate=try(LTMLE_1.0_result$estimate),
@@ -146,7 +151,7 @@ stopCluster(cl)
 results_df <- transform(as.data.frame(results), 
                         n=as.numeric(as.character(n)),
                         estimate=as.numeric(as.character(estimate)))
-estimators <- c('C-TMLE-sftning', 'MAGIC', 'MAGIC_LTMLE', 'WDR')
+estimators <- c('C-TMLE-sftning', 'MAGIC', 'MAGIC_LTMLE', 'MAGIC_full_library', 'WDR')
 results_df <- subset(results_df, estimator %in% estimators)
 
 results_df$squared_error <- (results_df$estimate - V0[1,1])^2
@@ -174,11 +179,11 @@ print(table(base_est_id_df$n, base_est_id_df$base_est_id))
 # Plot nMSE against n
 library(ggplot2)
 MSE_plot <- ggplot(data=MSE_table, aes(x=log10(n), y=log10(n*MSE), color=estimator, shape=estimator)) + 
-  scale_shape_manual( values=c('MAGIC'=15,
+  scale_shape_manual( values=c('MAGIC'=15, 'MAGIC_full_library'=15,
                                'C-TMLE-sftning'=15, '1step_LTMLE'=15, 'MAGIC_LTMLE'=15, 'partial_LTMLE_1.0'=15, 'partial_LTMLE_0.3'=15,
                                'LTMLE_1.0'=19, 'LTMLE_0.7'=19, 'LTMLE_0.5'=19, 'LTMLE_0.1'=19, 'LTMLE_0.0'=19, 
                                'WDR'=18) ) +
-  scale_size_manual( values=c('MAGIC'=8,
+  scale_size_manual( values=c('MAGIC'=8, 'MAGIC_full_library'=8,
                               'C-TMLE-sftning'=8, '1step_LTMLE'=8, 'MAGIC_LTMLE'=8, 'partial_LTMLE_1.0'=8, 'partial_LTMLE_0.3'=8,
                               'LTMLE_1.0'=4, 'LTMLE_0.7'=4, 'LTMLE_0.5'=4, 'LTMLE_0.1'=4, 'LTMLE_0.0'=4, 
                               'WDR'=4)) +

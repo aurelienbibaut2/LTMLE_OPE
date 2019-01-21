@@ -32,7 +32,7 @@ MAGIC_LTMLE_estimator <- function(D, Q_hat, V_hat, evaluation_action_matrix, gam
   x_star <- solve.QP(Dmat=Dmat, dvec=dvec, Amat=Amat, bvec=b0, meq=1)$solution
   
   # Compute the corresponding sequence of partial softened LTMLE
-  n_alphas <- 10
+  n_alphas <- length(J)
   js <- (ceiling(seq(1, horizon, length.out=n_alphas))) 
   alphas <- seq(0, 1, length.out = n_alphas)
   
