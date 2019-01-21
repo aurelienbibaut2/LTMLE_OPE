@@ -67,7 +67,7 @@ generate_trajectory <- function(client, instance_id, pi_b, pi_e, max_steps=80){
   }
   
   rtg <- rev(cumsum(rev(rewards)))
-  cbind(s=states, a=actions, r=rewards, rtg=rtg, rho_t = rho_t, gamma_t = rep(1, max_steps))
+  cbind(s=states, a=actions, r=rewards, rtg=rtg, rho_t=rho_t, gamma_t = rep(1, max_steps))
 }
 
 generate_CartPole_dataset <- function(n, max_steps, client, instance_id, pi_b, pi_e){
@@ -79,7 +79,7 @@ MC_true_value <- function(n, max_steps, pi_e){
   D <- generate_CartPole_dataset(n, max_steps, client, instance_id, pi_e, pi_e)
   estimate <- mean(D[, 1, 'rtg'])
   stddev <- sd(D[, 1, 'rtg'])
-  list(estimate, LB=estimate-1.96*stddev / sqrt(n), UB=estimate + 1.96*stddev / sqrt(n))
+  list(estimate, LB=estimate - 1.96*stddev / sqrt(n), UB=estimate + 1.96*stddev / sqrt(n))
 }
 
 # Ridiculously biased initial estimators

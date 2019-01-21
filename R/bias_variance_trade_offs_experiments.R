@@ -41,6 +41,7 @@ ns <- c(100)
 n_ids <- 10
 b0 <- 5e-2
 alphas <- seq(0, 1, length.out = n_ids)
+lambdas <- rev(seq(0, 1e-4, length.out = n_ids))
 js <- ceiling(seq(1, horizon, length.out=n_ids))
 jobs <- expand.grid(n = ns, id = 1:n_ids,repeat.id = 1:nb_repeats)
 

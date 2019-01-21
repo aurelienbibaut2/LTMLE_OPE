@@ -164,7 +164,7 @@ WDR_estimator_TB <- function(D, Q_hat, V_hat, gamma=1, j=NULL, compute_covarianc
   Omega_n <- NULL
   if(compute_covariance) Omega_n <- t(centered_xi) %*% centered_xi / n # Putting a switch here as this can be pretty long
   g_js <- apply(xi, 2, mean)
-  list(g_js=g_js, Omega_n=Omega_n)
+  list(g_js=g_js, Omega_n=Omega_n, centered_xi=centered_xi)
 }
 
 

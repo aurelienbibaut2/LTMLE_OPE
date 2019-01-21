@@ -23,12 +23,19 @@ evaluate_EIC <- function(D, epsilons, Q_hat, V_hat, evaluation_action_matrix, ga
 }
 
 
-evaluate_stabilized_EIC <- function(D, epsilons, Q_hat, V_hat, evaluation_action_matrix, gamma){
+evaluate_stabilized_EIC <- function(D, epsilons, Q_hat, V_hat, evaluation_action_matrix, gamma, j=NULL){
+  if(is.null(j))
+    j <- horizon
   n <- dim(D)[1]; horizon <- dim(D)[2]
   D_star <- matrix(0, nrow=n, ncol=horizon)
   V_t_evaluated <- rep(0, n)
   Delta_t <- 0
-  for(t in horizon:1){
+  if(j < horizon){
+    for(t in horizon:(j+1)){
+      Delta_t <- 1 + gamma * Delta_t
+    }
+  }
+  for(t in j:1){
     Delta_t <- 1 + gamma * Delta_t
     # Compute the fluctuated estimator \hat{Q}^*_t from \hat{Q}_t and epsilon_t
     Q_tilde_t_star <- expit( logit( (Q_hat[t, ,] + Delta_t) / (2 * Delta_t) )
