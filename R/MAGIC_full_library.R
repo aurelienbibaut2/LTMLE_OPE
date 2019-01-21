@@ -23,16 +23,17 @@ MAGIC_full_library_estimator <- function(D, Q_hat, V_hat, evaluation_action_matr
   n_alphas <- 10
   alphas_bis <- c(rep(0, n_ids/2), seq(0, 1, length.out = n_alphas/2))
   lambdas_bis <- c(rev(seq(0, 5e-5, length.out = n_ids/2)), rep(0, n_alphas/2))
+  js_bis <- c(seq(1, horizon, length.out = n_ids/2), rep(horizon, n_ids/2))
   
   js <- (ceiling(seq(1, horizon, length.out=n_alphas)))
   alphas <- seq(0, 1, length.out = n_alphas)
   lambdas <- seq(0, 1e-4, length.out = n_alphas)
   LTMLE_results <- sapply(1:n_alphas, function(j) partial_LTMLE_estimator(D, Q_hat=Q_hat, V_hat=V_hat, gamma=gamma, 
                                                                        evaluation_action_matrix = evaluation_action_matrix, 
-                                                                       alpha=alphas_bis[j], j=js[j],
+                                                                       alpha=alphas_bis[j], j=js_bis[j],
                                                                        lambda=lambdas_bis[j]))
   xi_LTMLE <- sapply(1:n_alphas, function(j) evaluate_stabilized_EIC(D, epsilons = LTMLE_results[, j]$epsilons, 
-                                                                      Q_hat, V_hat, evaluation_action_matrix, gamma, j=js[j]))
+                                                                      Q_hat, V_hat, evaluation_action_matrix, gamma, j=js_bis[j]))
   xi_LTMLE_bar <- apply(xi_LTMLE, 2, mean)
   centered_xi_LTMLE <- xi_LTMLE - rep(1, n) %*% t(xi_LTMLE_bar)
   g_js_LTMLE <- unlist(LTMLE_results[1, ])
@@ -72,24 +73,24 @@ MAGIC_full_library_estimator <- function(D, Q_hat, V_hat, evaluation_action_matr
 
 
 # MAGIC full library debugging experiments -------------------------------------
-# source('MDP_modelWin.R')
-# horizon <- 5; gamma <- 1; n_states <- 3; n_actions <- 2
-# V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
-#                                   transition_based_rewards,
-#                                   evaluation_action_matrix, horizon, gamma = gamma)
-# V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
-# Q_hat <- array(dim=dim(Q0)); V_hat <- array(dim=dim(V0))
-# Q_hat <- Q0; V_hat <- V0
-# b <- 0 * rnorm(1)
-# Delta_t <- 0
-# 
-# D <- generate_discrete_MDP_dataset(100, 1, state_transition_matrix,
-#                                    behavior_action_matrix,
-#                                    transition_based_rewards,
-#                                    horizon)
-# 
-# 
-# # debug(MAGIC_LTMLE_estimator)
-# print(MAGIC_full_library_estimator(D, Q_hat, V_hat,
-#                         evaluation_action_matrix, 1, horizon=horizon
-#                         ))
+source('MDP_modelWin.R')
+horizon <- 5; gamma <- 1; n_states <- 3; n_actions <- 2
+V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
+                                  transition_based_rewards,
+                                  evaluation_action_matrix, horizon, gamma = gamma)
+V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
+Q_hat <- array(dim=dim(Q0)); V_hat <- array(dim=dim(V0))
+Q_hat <- Q0; V_hat <- V0
+b <- 5e-2 * rnorm(1)
+Delta_t <- 0
+
+D <- generate_discrete_MDP_dataset(100, 1, state_transition_matrix,
+                                   behavior_action_matrix,
+                                   transition_based_rewards,
+                                   horizon)
+
+
+# debug(MAGIC_LTMLE_estimator)
+print(round(MAGIC_full_library_estimator(D, Q_hat, V_hat,
+                        evaluation_action_matrix, 1, horizon=horizon
+                        )$x_star, 3))

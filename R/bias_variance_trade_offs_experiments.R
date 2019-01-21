@@ -37,16 +37,18 @@ V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
 library(foreach); library(doParallel)
 nb_repeats <- (parallel::detectCores() - 1) * 2
 # ns <- c(50, 100, 200, 500, 1000, 5000, 10000)
-ns <- c(100)
-n_ids <- 10
+ns <- c(1000)
+n_ids <- 20
 b0 <- 5e-3
 alphas <- seq(0, 1, length.out = n_ids)
 lambdas <- rev(seq(0, 1e-4, length.out = n_ids))
 js <- ceiling(seq(1, horizon, length.out=n_ids))
 jobs <- expand.grid(n = ns, id = 1:n_ids,repeat.id = 1:nb_repeats)
 
+
 alphas_bis <- c(rep(0, n_ids/2), seq(0, 1, length.out = n_ids/2))
-lambdas_bis <- c(rev(seq(0, 5e-5, length.out = n_ids/2)), rep(0, n_ids/2))
+lambdas_bis <- c(rev(seq(0, 5e-4, length.out = n_ids/2)), rep(0, n_ids/2))
+js_bis <- c(seq(1, horizon, length.out = n_ids/2), rep(horizon, n_ids/2))
 
 # Monte Carlo simulation --------------------------------------------------
 cat(detectCores(), 'cores detected\n')
@@ -74,30 +76,30 @@ results <- foreach(i=1:nrow(jobs), .combine = rbind,
                      rbind(c(n=jobs[i, ]$n, id=jobs[i, ]$id, estimator='WDR',
                              estimate=WDR_estimator_TB_old(D, Q_hat, V_hat, gamma=1, j=js[jobs[i, ]$id])),
                            
-                           c(n=jobs[i, ]$n, id=jobs[i, ]$id, estimator='softened_WDR',
-                             estimate=WDR_estimator_TB_softened(D, Q_hat, V_hat, gamma=1, alpha=alphas[jobs[i, ]$id], j=horizon)),
+                           # c(n=jobs[i, ]$n, id=jobs[i, ]$id, estimator='softened_WDR',
+                           #   estimate=WDR_estimator_TB_softened(D, Q_hat, V_hat, gamma=1, alpha=alphas[jobs[i, ]$id], j=horizon)),
                            
-                           c(n=jobs[i, ]$n, id=jobs[i, ]$id, estimator='partial_softened_WDR',
-                             estimate=WDR_estimator_TB_softened(D, Q_hat, V_hat, gamma=1,
-                                                                alpha=alphas[jobs[i, ]$id], j=js[jobs[i, ]$id])),
+                           # c(n=jobs[i, ]$n, id=jobs[i, ]$id, estimator='partial_softened_WDR',
+                           #   estimate=WDR_estimator_TB_softened(D, Q_hat, V_hat, gamma=1,
+                           #                                      alpha=alphas[jobs[i, ]$id], j=js[jobs[i, ]$id])),
                            
-                           c(n=jobs[i, ]$n, id=jobs[i, ]$id, estimator='partial_LTMLE',
-                             estimate=partial_LTMLE_estimator(D, Q_hat, V_hat,
-                                                              evaluation_action_matrix, gamma,
-                                                              alpha=1, j=js[jobs[i, ]$id])$estimate),
+                           # c(n=jobs[i, ]$n, id=jobs[i, ]$id, estimator='partial_LTMLE',
+                           #   estimate=partial_LTMLE_estimator(D, Q_hat, V_hat,
+                           #                                    evaluation_action_matrix, gamma,
+                           #                                    alpha=1, j=js[jobs[i, ]$id])$estimate),
                            
-                           c(n=jobs[i, ]$n, id=jobs[i, ]$id, estimator='partial_softened_LTMLE',
+                           c(n=jobs[i, ]$n, id=jobs[i, ]$id, estimator='ps LTMLE',
                              estimate=partial_LTMLE_estimator(D, Q_hat, V_hat,
                                                               evaluation_action_matrix, gamma,
                                                               alpha=alphas[jobs[i, ]$id], j=js[jobs[i, ]$id])$estimate),
                            
-                           c(n=jobs[i, ]$n, id=jobs[i, ]$id, estimator='psp_LTMLE',
+                           c(n=jobs[i, ]$n, id=jobs[i, ]$id, estimator='psp LTMLE',
                              estimate=partial_LTMLE_estimator(D, Q_hat, V_hat,
                                                               evaluation_action_matrix, gamma,
-                                                              alpha=alphas_bis[jobs[i, ]$id], j=horizon, 
-                                                              lambda=lambdas_bis[jobs[i, ]$id])$estimate),
+                                                              alpha=alphas_bis[jobs[i, ]$id], j=js[jobs[i, ]$id], 
+                                                              lambda_bis=lambdas_bis[jobs[i, ]$id])$estimate),
                            
-                           c(n=jobs[i, ]$n, id=jobs[i, ]$id, estimator='softened_LTMLE',
+                           c(n=jobs[i, ]$n, id=jobs[i, ]$id, estimator='softened LTMLE',
                              estimate=partial_LTMLE_estimator(D, Q_hat, V_hat,
                                                               evaluation_action_matrix, gamma,
                                                               alpha=alphas[jobs[i, ]$id], j=horizon)$estimate)
@@ -129,9 +131,9 @@ summary_table <- transform(cbind(MSE_table, var=var_table$var, bias=bias_table$b
                            MSE=round(MSE, 5), var=round(var, 5), bias=round(bias, 5))
 print(summary_table)
 
-MSE_plot <- ggplot(data=MSE_table, aes(x=id, y=log10(n*MSE), color=estimator, shape=estimator)) + geom_line() + geom_point(size=5) +
+MSE_plot <- ggplot(data=MSE_table, aes(x=id, y=log10(n*MSE), color=estimator, shape=estimator)) + geom_line() + geom_point(size=2.5) +
   ggtitle(paste('ModelWin, horizon=', horizon, ', number of draws per point=', nb_repeats,
-                '\nbias=', b0, '*rnorm(1), n=',ns[1])) +
+                '\nbias=', b0, '*rnorm(1), n=', ns[1])) +
   scale_shape_manual( values=c('WDR'=19, 'softened_WDR'=19, 'partial_softened_WDR'=19, 
-                               'partial_LTMLE'=15, 'softened_LTMLE'=15, 'partial_softened_LTMLE'=15, 'psp_LTMLE'=15) )
+                               'partial LTMLE'=15, 'softened LTMLE'=15, 'ps LTMLE'=15, 'psp LTMLE'=15) )
 print(MSE_plot)

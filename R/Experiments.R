@@ -37,8 +37,8 @@ V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
 library(foreach); library(doParallel)
 nb_repeats <- (parallel::detectCores() - 1)  * 2
 # ns <- c(50, 100, 200, 500, 1000, 5000, 10000)
-ns <- c(100, 500, 1000, 2000)
-b0 <- 5e-2
+ns <- c(100, 500, 1000, 5000)
+b0 <- 5e-3
 jobs <- expand.grid(n = ns, repeat.id = 1:nb_repeats)
 
 
@@ -99,10 +99,10 @@ results <- foreach(i=1:nrow(jobs), .combine = rbind,
                                                                                                           gamma, horizon, n_bootstrap=1000, 
                                                                                                           force_PD=T)$estimate),
                                base_est_id=NA, epsilon=NA, score_eq=NA)
-                           , c(n=jobs[i, ]$n, estimator='MAGIC_full_library', estimate=try(MAGIC_full_library_estimator(D, Q_hat, V_hat, evaluation_action_matrix, 
-                                                                                                                 gamma, horizon, n_bootstrap=1000, 
-                                                                                                                 force_PD=T)$estimate),
-                               base_est_id=NA, epsilon=NA, score_eq=NA)
+                           # , c(n=jobs[i, ]$n, estimator='MAGIC_full_library', estimate=try(MAGIC_full_library_estimator(D, Q_hat, V_hat, evaluation_action_matrix, 
+                           #                                                                                       gamma, horizon, n_bootstrap=1000, 
+                           #                                                                                       force_PD=T)$estimate),
+                           #     base_est_id=NA, epsilon=NA, score_eq=NA)
                            # , c(n=jobs[i, ]$n, estimator='MAGIC-LTMLE', estimate=try(MAGIC_LTMLE_estimator_hacky(D, Q_hat, V_hat, evaluation_action_matrix, 
                            #                                                          gamma, n_bootstrap=1000) ))
                            # , c(n=jobs[i, ]$n, estimator='LTMLE_1.0', estimate=try(LTMLE_1.0_result$estimate),
@@ -151,7 +151,8 @@ stopCluster(cl)
 results_df <- transform(as.data.frame(results), 
                         n=as.numeric(as.character(n)),
                         estimate=as.numeric(as.character(estimate)))
-estimators <- c('C-TMLE-sftning', 'MAGIC', 'MAGIC_LTMLE', 'MAGIC_full_library', 'WDR')
+estimators <- c(#'C-TMLE-sftning', 
+  'MAGIC', 'MAGIC_LTMLE', 'WDR')
 results_df <- subset(results_df, estimator %in% estimators)
 
 results_df$squared_error <- (results_df$estimate - V0[1,1])^2

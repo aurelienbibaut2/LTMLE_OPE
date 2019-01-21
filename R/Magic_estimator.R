@@ -39,7 +39,7 @@ MAGIC_estimator <- function(D, Q_hat, V_hat, gamma, horizon, n_bootstrap=1000, f
   g_js <- WDR_results$g_js
   
   # Get bias by bootstrapping g^(horizon)
-  bootstrap_CI <- bootstrap_WDR(D, Q_hat=Q_hat, V_hat=V_hat, gamma=gamma, n_bootstrap=n_bootstrap, alpha=0.1)
+  bootstrap_CI <- bootstrap_WDR(D, Q_hat=Q_hat, V_hat=V_hat, gamma=gamma, n_bootstrap=n_bootstrap, alpha=1)
   b_n <- sapply(g_js, Vectorize(function(g_j) distance_to_interval(bootstrap_CI, g_j)) )
   
   # Solving x^\top D x under the constraint that A^\top x >= b0. 
