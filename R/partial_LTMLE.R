@@ -56,23 +56,23 @@ partial_LTMLE_estimator <-  function(D, Q_hat, V_hat, evaluation_action_matrix, 
 }
 
 #Partial LTMLE debugging experiments -------------------------------------
-source('MDP_modelWin.R')
-horizon <- 5; gamma <- 1; n_states <- 3; n_actions <- 2
-V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
-                                  transition_based_rewards,
-                                  evaluation_action_matrix, horizon, gamma = gamma)
-V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
-Q_hat <- array(dim=dim(Q0)); V_hat <- array(dim=dim(V0))
-Q_hat <- Q0; V_hat <- V0
-b <- 0 * rnorm(1)
-Delta_t <- 0
-
-D <- generate_discrete_MDP_dataset(100, 1, state_transition_matrix,
-                                   behavior_action_matrix,
-                                   transition_based_rewards,
-                                   horizon)
-
-# debug(partial_LTMLE_estimator)
-print(partial_LTMLE_estimator(D, Q_hat, V_hat,
-                        evaluation_action_matrix, 1,
-                        alpha=1, j=horizon, lambda=1e-4, lambda_bis=0))
+# source('MDP_modelWin.R')
+# horizon <- 5; gamma <- 1; n_states <- 3; n_actions <- 2
+# V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
+#                                   transition_based_rewards,
+#                                   evaluation_action_matrix, horizon, gamma = gamma)
+# V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
+# Q_hat <- array(dim=dim(Q0)); V_hat <- array(dim=dim(V0))
+# Q_hat <- Q0; V_hat <- V0
+# b <- 0 * rnorm(1)
+# Delta_t <- 0
+# 
+# D <- generate_discrete_MDP_dataset(100, 1, state_transition_matrix,
+#                                    behavior_action_matrix,
+#                                    transition_based_rewards,
+#                                    horizon)
+# 
+# # debug(partial_LTMLE_estimator)
+# print(partial_LTMLE_estimator(D, Q_hat, V_hat,
+#                         evaluation_action_matrix, 1,
+#                         alpha=1, j=horizon, lambda=1e-4, lambda_bis=0))

@@ -71,7 +71,6 @@ MAGIC_full_library_estimator <- function(D, Q_hat, V_hat, evaluation_action_matr
        b_n=b_n, Omega_n=Omega_n, bootstrap_CI=bootstrap_CI, J=J)
 }
 
-
 # MAGIC full library debugging experiments -------------------------------------
 source('MDP_modelWin.R')
 horizon <- 5; gamma <- 1; n_states <- 3; n_actions <- 2
@@ -88,9 +87,7 @@ D <- generate_discrete_MDP_dataset(100, 1, state_transition_matrix,
                                    behavior_action_matrix,
                                    transition_based_rewards,
                                    horizon)
-
-
 # debug(MAGIC_LTMLE_estimator)
-print(round(MAGIC_full_library_estimator(D, Q_hat, V_hat,
-                        evaluation_action_matrix, 1, horizon=horizon
-                        )$x_star, 3))
+# print(round(MAGIC_full_library_estimator(D, Q_hat, V_hat,
+#                         evaluation_action_matrix, 1, horizon=horizon
+#                         )$x_star, 3))
