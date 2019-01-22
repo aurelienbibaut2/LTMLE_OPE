@@ -14,6 +14,7 @@ source('partial_LTMLE.R')
 source('MDP_modelWin.R')
 source('Magic_full_bootstrap.R')
 # source('MDP_modelFail.R')
+source('MDP_Gridworld.R')
 
 # Simulations -------------------------------------------------------------
 # ModelFail parameters
@@ -27,8 +28,17 @@ source('Magic_full_bootstrap.R')
 # Q_hat[3, , ] <- 0
 # V_hat[3, ] <- 0
 
-# ModelWin parameters
-horizon <- 10; gamma <- 1; n_states <- 3; n_actions <- 2
+# # ModelWin parameters
+# horizon <- 10; gamma <- 1; n_states <- 3; n_actions <- 2
+# V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
+#                                   transition_based_rewards,
+#                                   evaluation_action_matrix, horizon, gamma = gamma)
+# V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
+
+# GridWorld parameters
+env_name <- 'GridWorld'
+horizon <- 10; gamma <- 1; n_states <- 16; n_actions <- 2
+evaluation_action_matrix <- evaluation_action_matrix_p4
 V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
                                   transition_based_rewards,
                                   evaluation_action_matrix, horizon, gamma = gamma)
@@ -38,7 +48,8 @@ V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
 library(foreach); library(doParallel)
 nb_repeats <- (parallel::detectCores() - 1)  * 1
 # ns <- c(50, 100, 200, 500, 1000, 5000, 10000)
-ns <- c(100, 500, 1000, 5000, 1e4)
+# ns <- c(100, 500, 1000, 5000, 1e4)
+ns <- c(100, 200, 500)
 b0 <- 5e-3
 jobs <- expand.grid(n = ns, repeat.id = 1:nb_repeats)
 
@@ -194,8 +205,11 @@ MSE_plot <- ggplot(data=MSE_table, aes(x=log10(n), y=log10(n*MSE), color=estimat
                               'LTMLE_1.0'=4, 'LTMLE_0.7'=4, 'LTMLE_0.5'=4, 'LTMLE_0.1'=4, 'LTMLE_0.0'=4, 
                               'WDR'=4)) +
   geom_line(size=1) + geom_point(aes(size=estimator)) + 
-  ggtitle(paste('ModelWin, horizon=', horizon, ', number of draws per point=', nb_repeats,
+  ggtitle(paste(env_name, ', horizon=', horizon, ', number of draws per point=', nb_repeats,
                 '\nb0=', b0))
 print(MSE_plot)
 
-write.csv(x = MSE_table, file = 'ModelWin-1e2-1e4-horizon=10-b0=5e-3-63draws.csv')
+out_file_name <- paste(c('../results/', env_name, '-1e', log10(min(ns)), '-1e', round(log10(max(ns)),1), '-horizon=', horizon,
+                        'b0=', b0, '-', nb_repeats, 'draws.csv'), collapse = '')
+
+write.csv(x = MSE_table, file = out_file_name)

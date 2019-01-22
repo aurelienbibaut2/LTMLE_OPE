@@ -300,18 +300,18 @@ evaluation_action_matrix_p5 <-  rbind(c(0.004,0.996),
                                       c(1/2, 1/2),
                                       c(1/2, 1/2))
 
-#Check V0 and Q0:
-horizon <- 100
-
-#MCres_eval_p4 <- MC_direct_evaluation(state_transition_matrix, transition_based_rewards,evaluation_action_matrix=evaluation_action_matrix_p4, horizon, M=10000)
-#MCres_eval_p5 <- MC_direct_evaluation(state_transition_matrix, transition_based_rewards,evaluation_action_matrix=evaluation_action_matrix_p5, horizon, M=10000)
-#MCres_beha <- MC_direct_evaluation(state_transition_matrix, transition_based_rewards, behavior_action_matrix, horizon, M=10000)
-
-V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,transition_based_rewards,
-                    evaluation_action_matrix=evaluation_action_matrix_p5, horizon, gamma=1)
-
-#V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,transition_based_rewards,
-#                                  evaluation_action_matrix=evaluation_action_matrix_p4, horizon, gamma=1)
-
-V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,transition_based_rewards,
-                                  evaluation_action_matrix=behavior_action_matrix, horizon, gamma=1)
+# #Check V0 and Q0:
+# horizon <- 100
+# 
+# #MCres_eval_p4 <- MC_direct_evaluation(state_transition_matrix, transition_based_rewards,evaluation_action_matrix=evaluation_action_matrix_p4, horizon, M=10000)
+# #MCres_eval_p5 <- MC_direct_evaluation(state_transition_matrix, transition_based_rewards,evaluation_action_matrix=evaluation_action_matrix_p5, horizon, M=10000)
+# #MCres_beha <- MC_direct_evaluation(state_transition_matrix, transition_based_rewards, behavior_action_matrix, horizon, M=10000)
+# 
+# V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,transition_based_rewards,
+#                     evaluation_action_matrix=evaluation_action_matrix_p5, horizon, gamma=1)
+# 
+# #V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,transition_based_rewards,
+# #                                  evaluation_action_matrix=evaluation_action_matrix_p4, horizon, gamma=1)
+# 
+# V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,transition_based_rewards,
+#                                   evaluation_action_matrix=behavior_action_matrix, horizon, gamma=1)
