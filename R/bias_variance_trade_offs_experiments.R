@@ -36,7 +36,7 @@ source('MDP_Gridworld.R')
 
 # GridWorld parameters
 env_name <- 'GridWorld'
-horizon <- 50; gamma <- 1; n_states <- 16; n_actions <- 2
+horizon <- 100; gamma <- 1; n_states <- 16; n_actions <- 2
 evaluation_action_matrix <- evaluation_action_matrix_p4
 V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
                                   transition_based_rewards,
@@ -46,7 +46,7 @@ V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
 
 # Specify jobs ------------------------------------------------------------
 library(foreach); library(doParallel)
-nb_repeats <- (parallel::detectCores() - 1) * 1
+nb_repeats <- (parallel::detectCores() - 1) * 5
 # ns <- c(50, 100, 200, 500, 1000, 5000, 10000)
 ns <- c(100)
 n_ids <- 10
