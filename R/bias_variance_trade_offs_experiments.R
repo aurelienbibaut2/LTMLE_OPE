@@ -35,11 +35,11 @@ V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
 
 # Specify jobs ------------------------------------------------------------
 library(foreach); library(doParallel)
-nb_repeats <- (parallel::detectCores() - 1) * 2
+nb_repeats <- (parallel::detectCores() - 1) * 5
 # ns <- c(50, 100, 200, 500, 1000, 5000, 10000)
-ns <- c(200)
+ns <- c(1000)
 n_ids <- 10
-b0 <- 5e-2
+b0 <- 5e-3
 alphas <- seq(0, 1, length.out = n_ids)
 lambdas <- rev(seq(0, 1e-4, length.out = n_ids))
 js <- ceiling(seq(1, horizon, length.out=n_ids))
