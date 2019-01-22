@@ -11,8 +11,9 @@ source('penalized_LTMLE.R')
 source('MAGIC-LTMLE_Estimator.R')
 source('single_epsilon_LTMLE.R')
 source('partial_LTMLE.R')
-source('MDP_modelWin.R')
+# source('MDP_modelWin.R')
 # source('MDP_modelFail.R')
+source('MDP_Gridworld.R')
 
 # Simulations -------------------------------------------------------------
 # ModelFail parameters
@@ -26,20 +27,30 @@ source('MDP_modelWin.R')
 # Q_hat[3, , ] <- 0
 # V_hat[3, ] <- 0
 
-# ModelWin parameters
-horizon <- 5; gamma <- 1; n_states <- 3; n_actions <- 2
+# # ModelWin parameters
+# horizon <- 5; gamma <- 1; n_states <- 3; n_actions <- 2
+# V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
+#                                   transition_based_rewards,
+#                                   evaluation_action_matrix, horizon, gamma = gamma)
+# V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
+
+# GridWorld parameters
+env_name <- 'GridWorld'
+horizon <- 50; gamma <- 1; n_states <- 16; n_actions <- 2
+evaluation_action_matrix <- evaluation_action_matrix_p4
 V0_and_Q0 <- compute_true_V_and_Q(state_transition_matrix,
                                   transition_based_rewards,
-                                  evaluation_action_matrix, horizon, gamma = gamma)
+                                  evaluation_action_matrix, 
+                                  horizon, gamma = gamma)
 V0 <- V0_and_Q0$V0; Q0 <- V0_and_Q0$Q0
 
 # Specify jobs ------------------------------------------------------------
 library(foreach); library(doParallel)
-nb_repeats <- (parallel::detectCores() - 1) * 5
+nb_repeats <- (parallel::detectCores() - 1) * 1
 # ns <- c(50, 100, 200, 500, 1000, 5000, 10000)
-ns <- c(1000)
+ns <- c(100)
 n_ids <- 10
-b0 <- 5e-3
+b0 <- 5e-2
 alphas <- seq(0, 1, length.out = n_ids)
 lambdas <- rev(seq(0, 1e-4, length.out = n_ids))
 js <- ceiling(seq(1, horizon, length.out=n_ids))
@@ -132,7 +143,7 @@ summary_table <- transform(cbind(MSE_table, var=var_table$var, bias=bias_table$b
 print(summary_table)
 
 MSE_plot <- ggplot(data=MSE_table, aes(x=id, y=log10(n*MSE), color=estimator, shape=estimator)) + geom_line() + geom_point(size=2.5) +
-  ggtitle(paste('ModelWin, horizon=', horizon, ', number of draws per point=', nb_repeats,
+  ggtitle(paste(env_name,' horizon=', horizon, ', number of draws per point=', nb_repeats,
                 '\nbias=', b0, '*rnorm(1), n=', ns[1])) +
   scale_shape_manual( values=c('WDR'=19, 'softened_WDR'=19, 'partial_softened_WDR'=19, 
                                'partial LTMLE'=15, 'softened LTMLE'=15, 'ps LTMLE'=15, 'psp LTMLE'=15) )
