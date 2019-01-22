@@ -14,8 +14,8 @@ MAGIC_new_bootstrap_LTMLE <- function(D, Q_hat, V_hat, gamma, evaluation_action_
   lambdas <- c(rev(seq(0, 5e-4, length.out = n_ids/2)), rep(0, n_ids/2))
   js <- c(seq(1, horizon, length.out = n_ids/2), rep(horizon, n_ids/2))
   
-  R1 <- horizon * 8
-  R2 <- horizon * 4
+  R1 <- min(horizon * 8, 40)
+  R2 <- min(horizon * 4, 20)
   g_js <- sapply(1:n_ids, function(j) partial_LTMLE_estimator(D, Q_hat=Q_hat, V_hat=V_hat, gamma=gamma,
                                                               evaluation_action_matrix = evaluation_action_matrix, 
                                                               alpha=alphas[j], j=js[j], lambda=lambdas[j])$estimate)
