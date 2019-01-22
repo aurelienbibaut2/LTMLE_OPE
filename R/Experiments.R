@@ -39,7 +39,7 @@ library(foreach); library(doParallel)
 nb_repeats <- (parallel::detectCores() - 1)  * 1
 # ns <- c(50, 100, 200, 500, 1000, 5000, 10000)
 ns <- c(100, 500, 1000, 5000, 1e4)
-b0 <- 5e-2
+b0 <- 5e-3
 jobs <- expand.grid(n = ns, repeat.id = 1:nb_repeats)
 
 
@@ -175,21 +175,27 @@ summary_table <- transform(cbind(MSE_table, var=var_table$var, bias=bias_table$b
                            MSE=round(MSE, 5), var=round(var, 5), bias=round(bias, 5))
 print(summary_table)
 
+MSE_table$estimator <- as.character(MSE_table$estimator)
+MSE_table$estimator[MSE_table$estimator == 'MAGIC_LTMLE'] <- 'RLTMLE 1'
+MSE_table$estimator[MSE_table$estimator == 'MAGIC_bootstrap'] <- 'RLTMLE 2'
+
 # Base estimator id:
 base_est_id_df <- subset(data.frame(results), subset=estimator=='C-TMLE-sftning' )
 print(table(base_est_id_df$n, base_est_id_df$base_est_id))
 # Plot nMSE against n
 library(ggplot2)
 MSE_plot <- ggplot(data=MSE_table, aes(x=log10(n), y=log10(n*MSE), color=estimator, shape=estimator)) + 
-  scale_shape_manual( values=c('MAGIC'=15, 'MAGIC_full_library'=15, 'MAGIC_bootstrap'=15,
+  scale_shape_manual( values=c('MAGIC'=15, 'MAGIC_full_library'=15, 'MAGIC_bootstrap'=15, 'RLTMLE 1'=15, 'RLTMLE 2'=15,
                                'C-TMLE-sftning'=15, '1step_LTMLE'=15, 'MAGIC_LTMLE'=15, 'partial_LTMLE_1.0'=15, 'partial_LTMLE_0.3'=15,
-                               'LTMLE_1.0'=19, 'LTMLE_0.7'=19, 'LTMLE_0.5'=19, 'LTMLE_0.1'=19, 'LTMLE_0.0'=19, 
+                               'LTMLE_1.0'=19, 'LTMLE_0.7'=19, 'LTMLE_0.5'=19, 'LTMLE_0.1'=19, 'LTMLE_0.0'=19,
                                'WDR'=18) ) +
-  scale_size_manual( values=c('MAGIC'=8, 'MAGIC_full_library'=8, 'MAGIC_bootstrap'=8,
+  scale_size_manual( values=c('MAGIC'=8, 'MAGIC_full_library'=8, 'MAGIC_bootstrap'=8, 'RLTMLE 1'=8, 'RLTMLE 2'=8,
                               'C-TMLE-sftning'=8, '1step_LTMLE'=8, 'MAGIC_LTMLE'=8, 'partial_LTMLE_1.0'=8, 'partial_LTMLE_0.3'=8,
                               'LTMLE_1.0'=4, 'LTMLE_0.7'=4, 'LTMLE_0.5'=4, 'LTMLE_0.1'=4, 'LTMLE_0.0'=4, 
                               'WDR'=4)) +
   geom_line(size=1) + geom_point(aes(size=estimator)) + 
   ggtitle(paste('ModelWin, horizon=', horizon, ', number of draws per point=', nb_repeats,
-                '\nbias=', b0, '*rnorm(1)'))
+                '\nb0=', b0))
 print(MSE_plot)
+
+write.csv(x = MSE_table, file = 'ModelWin-1e2-1e4-horizon=10-b0=5e-3-63draws.csv')
